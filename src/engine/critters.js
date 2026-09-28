@@ -77,7 +77,7 @@ export class Pigeon {
 
 // ============================================================ WALKERS
 
-const WALKER = {
+export const WALKER = {
   oldwoman: { icon: 'icon_oldwoman', h: 26, speed: 30, fuse: 5.5, R: 70, D: 60, sfx: 'oldwoman', wallBoom: false },
   madcow: { icon: 'icon_madcow', h: 24, speed: 58, fuse: 6, R: 56, D: 50, sfx: 'cow', wallBoom: true },
 };

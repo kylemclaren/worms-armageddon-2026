@@ -4,6 +4,7 @@
 // wind. The search is a generator so it spreads over frames while the worm
 // "thinks". Skill only adds aiming error afterwards.
 import { stepBody } from './entities.js';
+import { WALKER } from './critters.js';
 import { MAX_SPEED } from './weapons.js';
 import { rand, clamp } from './util.js';
 import { toast } from './toast.js';
@@ -20,7 +21,25 @@ const BALLISTIC = {
   cluster: { r: 3.5, impact: false, bounce: 0.5, friction: 0.82, radius: 40, damage: 42, speedMul: 0.95, fuse: true, cost: 8 },
   banana:  { r: 4, impact: false, bounce: 0.6, friction: 0.82, radius: 80, damage: 95, speedMul: 0.95, fuse: true, cost: 45 },
   hhg:     { r: 4.5, impact: false, bounce: 0.18, friction: 0.5, radius: 110, damage: 100, speedMul: 0.9, fixedFuse: 4.1, cost: 55 },
+  // mortar: no power bar (always 0.8); the six bomblets are folded into one wider blast for scoring
+  mortar:  { r: 3, wind: 1, impact: true, hitsWorms: true, radius: 44, damage: 38, speedMul: 1, fixedPower: 0.8, cost: 2 },
+  petrol:  { r: 3, impact: true, hitsWorms: true, radius: 20, damage: 10, speedMul: 0.9, fire: 70, cost: 6 },
 };
+
+/** Names Jev sees, with the one fact about each weapon that matters for choosing it. */
+const WNAME = { bazooka: 'Bazooka', grenade: 'Grenade', cluster: 'Cluster Bomb', banana: 'Banana Bomb (rare, huge)',
+  hhg: 'Holy Hand Grenade (rare, enormous)', shotgun: 'Shotgun (2 shots)', firepunch: 'Fire Punch', bat: 'Baseball Bat (knocks far)',
+  airstrike: 'Air Strike (rare)', donkey: 'Concrete Donkey (super weapon)', homing: 'Homing Missile (limited)', armageddon: 'Armageddon (super weapon)',
+  mortar: 'Mortar (splits into bomblets)', pigeon: 'Homing Pigeon (flies round terrain to the target)', petrol: 'Petrol Bomb (sets the area on fire)',
+  handgun: 'Handgun (6 shots)', uzi: 'Uzi (10-round burst)', longbow: 'Longbow (2 arrows, knockback)', dragonball: 'Dragon Ball (short-range fireball)',
+  kamikaze: 'Kamikaze (YOUR worm dies in the blast)', prod: 'Prod (a push, no damage)', axe: 'Battle Axe (halves the victim\'s health)',
+  dynamite: 'Dynamite (dropped, 5s fuse, then run)', vase: 'Ming Vase (dropped, 5s fuse, then run)', sheep: 'Sheep (hops to the enemy)',
+  supersheep: 'Super Sheep (flies, steered to the target)', oldwoman: 'Old Woman (walks, explodes after 5s)', madcow: 'Mad Cows (two, charge and explode)',
+  napalm: 'Napalm Strike (rare, fire from the sky)', minestrike: 'Mine Strike (rare, scatters mines)', sheepstrike: 'Sheep Strike (rare, sheep bombs from the sky)',
+  quake: 'Earthquake (rare, shakes everyone toward the water)', scales: 'Scales of Justice (rare, shares health equally between teams)' };
+const COST = { pigeon: 12, uzi: 4, handgun: 3, longbow: 3, dragonball: 5, axe: 6, prod: 0, vase: 20, dynamite: 16, sheep: 8, supersheep: 15,
+  oldwoman: 12, madcow: 14, napalm: 10, minestrike: 12, sheepstrike: 15, quake: 20, scales: 10 };
+const UNSURE = new Set(['homing', 'airstrike', 'donkey', 'pigeon', 'napalm', 'minestrike', 'sheepstrike', 'sheep', 'supersheep', 'oldwoman', 'madcow', 'quake']);
 
 export class AI {
   constructor(g) { this.g = g; }
@@ -40,12 +59,12 @@ export class AI {
 
   // ------------------------------------------------------------ scoring
 
-  _scoreBlast(x, y, R, dmg) {
+  _scoreBlast(x, y, R, dmg, skipMe = false) {
     const g = this.g, me = this.w;
     let s = 0;
     const reach = R * 1.15;
     for (const w of g.worms) {
-      if (!w.alive) continue;
+      if (!w.alive || (skipMe && w === me)) continue;
       const d = Math.hypot(w.x - x, w.y - 4 - y);
       if (d > reach + w.r) continue;
       const f = 1 - clamp((d - w.r) / reach, 0, 1);
@@ -98,7 +117,8 @@ export class AI {
     const pts = Array.isArray(r) ? r : [r];
     let best = null;
     for (const h of pts) {
-      const s = this._scoreBlast(h.x, h.y, spec.radius, spec.damage) - (spec.cost || 0) - (h.t > 5 ? 3 : 0);
+      const s = this._scoreBlast(h.x, h.y, spec.radius, spec.damage) - (spec.cost || 0) - (h.t > 5 ? 3 : 0)
+        + (spec.fire ? this._fireBonus(h.x, h.y, spec.fire) : 0);
       if (!best || s > best.score) best = { score: s, kind: 'aim', weapon: id, ang, power: p, fuse: h.fuse ? Math.min(5, Math.ceil(h.fuse)) : 3, hit: h, radius: spec.radius, damage: spec.damage };
     }
     if (best) best.victim = this._nearestEnemy(best.hit.x, best.hit.y)?.name;
@@ -158,7 +178,7 @@ export class AI {
       for (let a = -1.45; a <= 1.45; a += coarseA) {
         for (const dir of [1, -1]) {
           const ang = dir > 0 ? a : Math.PI - a;
-          for (let p = 0.3; p <= 1.001; p += coarseP) {
+          for (let p = spec.fixedPower ?? 0.3; p <= (spec.fixedPower ?? 1) + 0.001; p += coarseP) {
             const c = this._evalShot(id, spec, ang, p);
             yield* pause();
             if (performance.now() > deadline) break outer;
@@ -175,7 +195,7 @@ export class AI {
       const spec = BALLISTIC[s.weapon];
       for (let da = -coarseA / 2; da <= coarseA / 2 + 1e-6; da += coarseA / 4) {
         for (let dp = -coarseP / 2; dp <= coarseP / 2 + 1e-6; dp += coarseP / 4) {
-          consider(this._evalShot(s.weapon, spec, s.ang + da, clamp(s.power + dp, 0.1, 1)));
+          consider(this._evalShot(s.weapon, spec, s.ang + da, spec.fixedPower ?? clamp(s.power + dp, 0.1, 1)));
           this.best = best;
           yield* pause();
           if (performance.now() > deadline) break;
@@ -200,7 +220,157 @@ export class AI {
       const s = this._scoreBlast(e.x, e.y - 4, 48, 50) * 0.8 - 10;
       consider({ score: s, kind: 'aim', weapon: 'homing', ang: -Math.PI / 2 + (e.x > me.x ? 0.5 : -0.5), power: 0.55, target: { x: e.x, y: e.y - 4 }, victim: e.name, hit: { x: e.x, y: e.y - 4 }, radius: 48, damage: 50 });
     }
+    yield* pause();
+    for (const c of this._secondWave(enemies)) { if (c) consider(c); this.best = best; yield* pause(); if (performance.now() > deadline + 2000) break; }
     this.best = best;
+  }
+
+  /**
+   * Candidates for the second-wave arsenal. Walkers and sheep are simulated over the real
+   * terrain like the ballistic shots; the rest use line-of-sight and blast scoring.
+   */
+  *_secondWave(enemies) {
+    const g = this.g, me = this.w, team = me.team, T = g.terrain;
+    const has = id => team.ammo[id] > 0;
+    const water = e => e.y > g.waterY - 110 || e.x < 150 || e.x > T.w - 150;
+    const clear = (x1, y1, x2, y2) => !T.ray(x1, y1, x2 - x1, y2 - y1, Math.hypot(x2 - x1, y2 - y1) - 10);
+    const kill = (n, e) => (n >= e.hp ? 60 : 0);
+
+    for (const e of enemies) {
+      const dx = e.x - me.x, dy = e.y - me.y, d = Math.hypot(dx, dy), dir = Math.sign(dx) || 1;
+      // ---- hitscan guns and arrows: need a clear straight line
+      if (d < 460 && clear(me.x, me.y - 6, e.x, e.y - 6)) {
+        const ang = Math.atan2(e.y - me.y, dx);
+        if (has('uzi') && d < 320) { const n = Math.min(e.hp, d < 160 ? 40 : 25); yield { score: n * 0.9 + kill(n, e) - COST.uzi, kind: 'aim', weapon: 'uzi', ang, power: 1, victim: e.name, est: [{ w: e, dmg: n }] }; }
+        if (has('handgun')) { const n = Math.min(e.hp, 28); yield { score: n * 0.85 + kill(n, e) - COST.handgun, kind: 'aim', weapon: 'handgun', ang, power: 1, victim: e.name, est: [{ w: e, dmg: n }] }; }
+        if (has('longbow') && d < 420) {
+          // arrows drop a little: aim a touch high with distance
+          const n = Math.min(e.hp, 30);
+          yield { score: n * 0.8 + kill(n, e) + (water(e) ? 30 : 0) - COST.longbow, kind: 'aim', weapon: 'longbow', ang: ang - clamp(d / 2600, 0, 0.16), power: 1, victim: e.name, est: [{ w: e, dmg: n }] };
+        }
+      }
+      // ---- close combat
+      if (Math.abs(dy) < 14 && Math.abs(dx) < 210 && has('dragonball') && clear(me.x, me.y - 4, e.x, e.y - 4)) {
+        const n = Math.min(30, e.hp);
+        yield { score: n + kill(n, e) + (water(e) ? 35 : 0) - COST.dragonball, kind: 'melee', weapon: 'dragonball', facing: dir, aim: 0, victim: e.name, est: [{ w: e, dmg: 30 }] };
+      }
+      if (Math.abs(dx) < 22 && Math.abs(dy) < 16) {
+        if (has('axe')) { const n = Math.max(1, Math.floor(e.hp / 2)); yield { score: n * 1.1 - COST.axe, kind: 'melee', weapon: 'axe', facing: dir, aim: 0, victim: e.name, est: [{ w: e, dmg: n }] }; }
+        // a prod only matters if it tips them into the sea
+        const land = T.standY?.(e.x + dir * 70, 8, e.y - 40, g.waterY) ?? null;
+        if (has('prod') && (land == null || e.y > g.waterY - 50)) {
+          yield { score: e.hp + 60, kind: 'melee', weapon: 'prod', facing: dir, aim: 0, victim: e.name, est: [{ w: e, dmg: e.hp }], note: `pushes enemy ${e.name} off the edge into the water (KILL)` };
+        }
+      }
+      // ---- kamikaze: a straight clear run, and only worth it if it takes more than it costs
+      if (has('kamikaze') && d < 420 && clear(me.x, me.y - 6, e.x, e.y - 6)) {
+        const s = this._scoreBlast(e.x, e.y - 4, 62, 50, true) - me.hp * 1.4 - 30;
+        yield { score: s, kind: 'aim', weapon: 'kamikaze', ang: Math.atan2(e.y - me.y, dx), power: 1, victim: e.name, hit: { x: e.x, y: e.y - 4 }, radius: 62, damage: 50,
+          note: `${this._report({ hit: { x: e.x, y: e.y - 4 }, radius: 62, damage: 50 })}; your worm ${me.name} dies` };
+      }
+      // ---- homing pigeon: pathfinds, so no line of sight needed; a bit less reliable
+      if (has('pigeon')) {
+        const s = this._scoreBlast(e.x, e.y - 4, 56, 60) * (clear(me.x, me.y - 20, e.x, e.y - 8) ? 0.95 : 0.75) - COST.pigeon;
+        yield { score: s, kind: 'aim', weapon: 'pigeon', facing: dir, aim: -0.7, target: { x: e.x, y: e.y - 4 }, victim: e.name, hit: { x: e.x, y: e.y - 4 }, radius: 56, damage: 60 };
+      }
+      // ---- strikes: need open sky over the target
+      const open = !T.ray(e.x, e.y - 26, 0, -1, e.y + 200);
+      if (open) {
+        const f = Math.random() < 0.5 ? 1 : -1;
+        if (has('napalm')) yield { score: (this._scoreBlast(e.x, e.y - 4, 32, 25) + this._fireBonus(e.x, e.y, 70)) * 1.2 - COST.napalm, kind: 'target', weapon: 'napalm', target: { x: e.x, y: e.y }, facing: f, victim: e.name, hit: { x: e.x, y: e.y }, radius: 40, damage: 35 };
+        if (has('sheepstrike')) yield { score: this._scoreBlast(e.x, e.y - 4, 46, 40) * 1.6 - COST.sheepstrike, kind: 'target', weapon: 'sheepstrike', target: { x: e.x, y: e.y }, facing: f, victim: e.name, hit: { x: e.x, y: e.y }, radius: 50, damage: 55 };
+        if (has('minestrike')) yield { score: this._scoreBlast(e.x, e.y - 4, 40, 30) * 0.8 - COST.minestrike, kind: 'target', weapon: 'minestrike', target: { x: e.x, y: e.y }, facing: f, victim: e.name, hit: { x: e.x, y: e.y }, radius: 40, damage: 30 };
+      }
+      // ---- dropped charges: only when standing on top of someone (we walk off during the fuse)
+      if (Math.abs(dx) < 26 && Math.abs(dy) < 18) {
+        for (const [id, R, D] of [['vase', 75, 75], ['dynamite', 85, 75]]) if (has(id)) {
+          const s = this._scoreBlast(me.x, me.y - 4, R, D, true) - COST[id] - 15;
+          yield { score: s, kind: 'now', weapon: id, victim: e.name, hit: { x: me.x, y: me.y - 4 }, radius: R, damage: D };
+        }
+      }
+    }
+
+    // ---- walkers and sheep: simulate their walk over the real terrain, both directions
+    for (const dir of [1, -1]) {
+      if (has('oldwoman')) { const r = this._simWalker(WALKER.oldwoman, dir); if (r) yield this._walkerPlan('oldwoman', dir, r, WALKER.oldwoman.R, WALKER.oldwoman.D, 1); }
+      if (has('madcow')) { const r = this._simWalker(WALKER.madcow, dir); if (r) yield this._walkerPlan('madcow', dir, r, WALKER.madcow.R, WALKER.madcow.D, 1.6); }
+      if (has('sheep')) { const r = this._simWalker({ speed: 105, fuse: 9, climb: 14, wallBoom: false }, dir, true); if (r) yield this._walkerPlan('sheep', dir, r, 76, 75, 1); }
+      yield null;
+    }
+    // ---- super sheep: flies, the AI steers it at the nearest enemy it can see from above
+    if (has('supersheep')) for (const e of enemies) {
+      const lx = me.x + (e.x > me.x ? 40 : -40), ly = me.y - 90;
+      if (T.ray(me.x, me.y - 20, lx - me.x, ly - me.y + 20, 80) || !clear(lx, ly, e.x, e.y - 8)) continue;
+      yield { score: this._scoreBlast(e.x, e.y - 4, 76, 75) * 0.85 - COST.supersheep, kind: 'now', weapon: 'supersheep', facing: Math.sign(e.x - me.x) || 1,
+        victim: e.name, hit: { x: e.x, y: e.y - 4 }, radius: 76, damage: 75, steerAt: e.name };
+    }
+    // ---- earthquake: worth it when enemies stand near the water and we don't
+    if (has('quake')) {
+      let s = -COST.quake;
+      for (const w of g.worms) if (w.alive && water(w)) s += w.team === team ? -w.hp * 0.8 : w.hp * 0.6 + 20;
+      yield { score: s, kind: 'now', weapon: 'quake', note: 'shakes every worm; those near the water may drown' };
+    }
+    // ---- scales of justice: when we're behind on health
+    if (has('scales')) {
+      const alive = g.aliveTeams(), total = alive.reduce((a, t) => a + g.teamHp(t), 0), share = total / alive.length;
+      const mine = g.teamHp(team), gain = share - mine;
+      const theirs = alive.filter(t => t !== team).reduce((a, t) => a + Math.max(0, g.teamHp(t) - share), 0);
+      yield { score: gain * 1.2 + theirs * 0.3 - COST.scales, kind: 'now', weapon: 'scales',
+        note: `your team goes from ${mine} to ${Math.round(share)} HP; every team ends on ${Math.round(share)}` };
+    }
+  }
+
+  /** Enemies standing in flames (fire does ~20 over its life), friends counted against. */
+  _fireBonus(x, y, R) {
+    const me = this.w; let s = 0;
+    for (const w of this.g.worms) {
+      if (!w.alive || Math.abs(w.x - x) > R || Math.abs(w.y - y) > 40) continue;
+      const n = Math.min(w.hp, 20);
+      s += w === me ? -n * 3 : w.team === me.team ? -n * 1.5 : n;
+    }
+    return s;
+  }
+
+  /**
+   * Dry run of a walker (Old Woman / Mad Cow / sheep hop) using the same stepping rules
+   * as critters.js. Returns where it will go off, or null if it drowns.
+   * stopNear: blow up beside the first enemy reached (sheep are detonated by hand).
+   */
+  _simWalker(K, dir, stopNear = false) {
+    const g = this.g, me = this.w, T = g.terrain;
+    const b = { x: me.x + dir * 10, y: me.y - 4, vx: dir * 40, vy: -120, r: 7, bounce: 0.1, friction: 0.6, rest: false };
+    const dt = 1 / 30, climb = K.climb || 5;
+    let t = 0, acc = 0, d = dir;
+    const near = () => stopNear && g.worms.some(o => o.alive && o.team !== me.team && Math.hypot(o.x - b.x, o.y - b.y) < 38);
+    while (t < K.fuse) {
+      t += dt;
+      if (!b.rest) stepBody(g, b, dt);
+      else if (!T.hitCircle(b.x, b.y + 2, b.r)) { b.rest = false; b.vx = d * 30; b.vy = 0; }
+      else {
+        acc += K.speed * dt;
+        while (acc >= 1 && b.rest) {
+          acc -= 1;
+          const nx = b.x + d;
+          let ny = b.y, k = 0;
+          while (T.hitCircle(nx, ny, b.r) && k < climb) { ny--; k++; }
+          if (T.hitCircle(nx, ny, b.r)) { if (K.wallBoom && t > 0.6) return { x: b.x, y: b.y - 4, t }; d = -d; acc = 0; break; }
+          let fall = 0;
+          while (!T.hitCircle(nx, ny + 1, b.r) && fall < 8) { ny++; fall++; }
+          b.x = nx; b.y = ny;
+          if (fall >= 8) { b.rest = false; b.vx = d * 40; b.vy = 0; }
+          if (near()) return { x: b.x, y: b.y - 4, t };
+        }
+      }
+      if (b.y > g.waterY || b.x < -100 || b.x > T.w + 100) return null;
+      if (near()) return { x: b.x, y: b.y - 4, t };
+    }
+    return stopNear ? null : { x: b.x, y: b.y - 4, t };
+  }
+
+  _walkerPlan(id, dir, r, R, D, mul) {
+    const s = this._scoreBlast(r.x, r.y, R, D) * mul - COST[id];
+    return { score: s, kind: 'now', weapon: id, facing: dir, hit: { x: r.x, y: r.y }, radius: R, damage: Math.round(D * mul),
+      victim: this._nearestEnemy(r.x, r.y)?.name };
   }
 
   // ------------------------------------------------------------ acting
@@ -217,7 +387,7 @@ export class AI {
       if (s?.type === 'sheep') {
         const near = g.worms.some(o => o.alive && o.team !== w.team && Math.hypot(o.x - s.x, o.y - s.y) < 40);
         if (near || s.t > 9) c.firePressed = true;
-      }
+      } else if (s?.type === 'supersheep') this._steerSheep(s, c);
       return;
     }
     if (g.state === 'retreat') { this._retreat(c); return; }
@@ -291,21 +461,37 @@ export class AI {
           if (!g.charging) { c.fire = true; c.firePressed = true; return; }
           if (g.power < p.power - 0.001) { c.fire = true; return; }
           g.power = p.power; c.fire = false; // release on the exact power
-          this.phase = p.weapon === 'shotgun' ? 'shoot2' : 'done';
+          this.phase = p.weapon === 'shotgun' || p.weapon === 'longbow' ? 'shoot2' : 'done';
         } else {
           c.firePressed = true;
-          this.phase = p.weapon === 'shotgun' ? 'shoot2' : 'done';
+          this.phase = p.weapon === 'shotgun' || p.weapon === 'longbow' ? 'shoot2' : 'done';
         }
         this.t = 0;
         return;
       }
       case 'shoot2': {
         if (this.t < 0.9) return;
-        if (g.state === 'turn' && g.weaponId === 'shotgun') c.firePressed = true;
+        if (g.state === 'turn' && (g.weaponId === 'shotgun' || g.weaponId === 'longbow')) c.firePressed = true;
         this.phase = 'done';
         return;
       }
     }
+  }
+
+  /** Super sheep pilot: take off, point at the target, pull up from land, detonate on arrival. */
+  _steerSheep(s, c) {
+    const g = this.g;
+    if (!s.flying) { if (s.t > 0.35) c.firePressed = true; return; }
+    const e = this.g.worms.find(o => o.alive && o.name === this.plan?.steerAt) || this._nearestEnemy(s.x, s.y);
+    if (!e) return;
+    if (Math.hypot(e.x - s.x, e.y - 6 - s.y) < 26 || s.flyT > 12) { c.firePressed = true; return; }
+    let want = Math.atan2(e.y - 8 - s.y, e.x - s.x);
+    // land dead ahead: climb away from it
+    const ax = Math.cos(s.ang), ay = Math.sin(s.ang);
+    if (g.terrain.hitCircle(s.x + ax * 34, s.y + ay * 34, 6) && Math.hypot(e.x - s.x, e.y - s.y) > 60) want = s.ang + (ax >= 0 ? -1.2 : 1.2);
+    let d = want - s.ang;
+    while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+    if (d > 0.06) c.right = true; else if (d < -0.06) c.left = true;
   }
 
   _nearestEnemy(x, y) {
@@ -319,6 +505,7 @@ export class AI {
   /** Who a candidate move is predicted to hurt, for describing it to Jev. */
   _report(c) {
     const g = this.g, me = this.w;
+    if (c.note) return c.note;
     let hits = c.est || [];
     if (!c.est && c.hit) {
       hits = [];
@@ -342,17 +529,15 @@ export class AI {
   _askJev() {
     const g = this.g, me = this.w, team = me.team;
     this.jevAsked = true;
-    const WNAME = { bazooka: 'Bazooka', grenade: 'Grenade', cluster: 'Cluster Bomb', banana: 'Banana Bomb (rare, huge)',
-      hhg: 'Holy Hand Grenade (rare, enormous)', shotgun: 'Shotgun (2 shots)', firepunch: 'Fire Punch', bat: 'Baseball Bat (knocks far)',
-      airstrike: 'Air Strike (rare)', donkey: 'Concrete Donkey (super weapon)', homing: 'Homing Missile (limited)', armageddon: 'Armageddon (super weapon)' };
     // top options by local score, then shuffled so Jev judges content, not list position
     const opts = [...this.pool.values()].sort((a, b) => b.score - a.score).slice(0, 10).sort(() => Math.random() - 0.5);
     const criteria = {}, byKey = {};
     opts.forEach((c, i) => {
       const k = `move_${i + 1}`;
       const ammo = team.ammo[c.weapon];
-      const sure = c.weapon === 'homing' || c.weapon === 'airstrike' || c.weapon === 'donkey' ? 'if the path is clear, ' : '';
-      criteria[k] = `${WNAME[c.weapon] || c.weapon} aimed at ${c.victim || 'the enemy'}: ${sure}${this._report(c)}. ` +
+      const sure = UNSURE.has(c.weapon) && !c.note ? 'if it gets there, ' : '';
+      const at = c.victim ? ` aimed at ${c.victim}` : '';
+      criteria[k] = `${WNAME[c.weapon] || c.weapon}${at}: ${sure}${this._report(c)}. ` +
         `${ammo === Infinity ? 'Unlimited ammo.' : `${ammo} left.`}`;
       byKey[k] = c;
     });
@@ -376,7 +561,8 @@ export class AI {
       move: { type: 'choice', criteria,
         instructions: 'Choose the best move for this turn. Kills and big damage to enemies are best; knocking enemies near the water is valuable. ' +
           'Never pick a move that damages YOURSELF or a teammate unless it also kills an enemy. Save rare weapons for kills or multi-hits; ' +
-          'prefer unlimited-ammo weapons when damage is similar.' },
+          'prefer unlimited-ammo weapons when damage is similar. Kamikaze sacrifices your worm: only when it kills more than it costs. ' +
+          'Scales of Justice is good when your team is behind on health.' },
       taunt: { type: 'choice', instructions: 'Which line should your worm shout as it acts?',
         criteria: { watchthis: 'Confident show-off before a great shot', fire: 'Battle cry for an ordinary shot',
           laugh: 'Mocking laughter when about to kill someone', revenge: 'Getting even after taking damage',
@@ -433,7 +619,7 @@ export class AI {
     const w = this.w, p = this.plan;
     if (!p || w.state !== 'idle') return;
     let danger = null;
-    if (p.weapon === 'dynamite' || p.weapon === 'mine') danger = { x: w.x - w.facing * 5 };
+    if (p.weapon === 'dynamite' || p.weapon === 'mine' || p.weapon === 'vase') danger = p.hit || { x: w.x - w.facing * 5 };
     else if (p.hit && Math.hypot(p.hit.x - w.x, p.hit.y - w.y) < 110) danger = p.hit;
     if (!danger) return;
     if (danger.x > w.x) c.left = true; else c.right = true;
