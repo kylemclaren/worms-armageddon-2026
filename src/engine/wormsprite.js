@@ -100,6 +100,7 @@ export function crispImage(img, tw, th) {
 export function wormFrame(w, g) {
   if (w.state === 'drown') return 'fall';
   if (w.state === 'rope' || w.state === 'jet') return w.vy < 0 ? 'jump' : 'fall';
+  if (w.state === 'kamikaze') return 'jump';
   if (w.state === 'air' || w.state === 'punch') {
     if (w.spin > 0.2 || w.flip > 0) return 'tumble';
     // a one-frame step off a lip isn't a fall: keep the ground pose briefly

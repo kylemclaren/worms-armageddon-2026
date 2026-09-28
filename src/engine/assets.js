@@ -13,7 +13,9 @@ const SPRITES = ['logo', 'parachute', 'tombstone', 'oildrum', 'crate_weapon', 'c
   'prop_cactus', 'prop_palm', 'prop_bones', 'prop_obelisk', 'crab'];
 const ICONS = ['bazooka', 'homing', 'grenade', 'cluster', 'banana', 'hhg', 'shotgun', 'minigun', 'firepunch', 'bat',
   'dynamite', 'mine', 'sheep', 'airstrike', 'armageddon', 'donkey', 'rope', 'jetpack', 'teleport', 'girder',
-  'blowtorch', 'skipgo', 'surrender'];
+  'blowtorch', 'skipgo', 'surrender',
+  'pigeon', 'mortar', 'uzi', 'handgun', 'longbow', 'dragonball', 'kamikaze', 'prod', 'axe', 'napalm', 'minestrike',
+  'sheepstrike', 'petrol', 'vase', 'drill', 'supersheep', 'oldwoman', 'madcow', 'quake', 'scales'];
 
 const MANIFEST = [
   ['worm', 'worm_base.png'],

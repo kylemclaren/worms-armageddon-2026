@@ -9,11 +9,13 @@ export const WEAPON_LIST: Weapon[] = WEAPONS;
 export const WEAPON_BY_ID: Record<string, Weapon> = Object.fromEntries(WEAPONS.map((w: Weapon) => [w.id, w]));
 
 export const WEAPON_GROUPS: { name: string; ids: string[] }[] = [
-  { name: 'Artillery', ids: ['bazooka', 'homing', 'grenade', 'cluster', 'banana', 'hhg'] },
-  { name: 'Guns & melee', ids: ['shotgun', 'minigun', 'firepunch', 'bat'] },
-  { name: 'Explosives', ids: ['dynamite', 'mine', 'sheep'] },
-  { name: 'Air support', ids: ['airstrike', 'armageddon', 'donkey'] },
-  { name: 'Tools', ids: ['rope', 'jetpack', 'teleport', 'girder', 'blowtorch'] },
+  { name: 'Artillery', ids: ['bazooka', 'homing', 'mortar', 'pigeon', 'grenade', 'cluster', 'banana', 'hhg', 'petrol'] },
+  { name: 'Guns', ids: ['shotgun', 'handgun', 'uzi', 'minigun', 'longbow'] },
+  { name: 'Close combat', ids: ['firepunch', 'dragonball', 'kamikaze', 'prod', 'bat', 'axe'] },
+  { name: 'Explosives & animals', ids: ['dynamite', 'mine', 'vase', 'sheep', 'supersheep', 'oldwoman', 'madcow'] },
+  { name: 'Air support', ids: ['airstrike', 'napalm', 'minestrike', 'sheepstrike'] },
+  { name: 'Specials', ids: ['quake', 'scales', 'donkey', 'armageddon'] },
+  { name: 'Tools', ids: ['rope', 'jetpack', 'teleport', 'girder', 'blowtorch', 'drill'] },
   { name: 'Turn', ids: ['skipgo', 'surrender'] },
 ];
 

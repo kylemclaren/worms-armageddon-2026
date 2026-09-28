@@ -129,3 +129,54 @@
 @keyframes toastBusy { from { background-position: -40% 0; } to { background-position: 140% 0; } }
 .game-toast-viewport:hover .toast-timer { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .toast-chip-face img, .toast-timer-busy { animation: none; } }
+
+/* ---- team cards (HUD, top left) ---- */
+.team-card {
+  position: relative; display: grid; gap: 6px; padding: 8px 10px 8px 14px; border-radius: 14px; overflow: hidden;
+  background:
+    radial-gradient(160px 60px at 0% 0%, color-mix(in oklab, var(--tone) 16%, transparent), transparent 70%),
+    linear-gradient(180deg, rgb(30 36 52 / .88), rgb(14 18 28 / .88));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .07), inset 0 1px 0 rgb(255 255 255 / .08), 0 8px 22px -8px rgb(0 0 0 / .6);
+  backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  transition: box-shadow .3s ease, opacity .4s ease, filter .4s ease;
+}
+/* team-colour rail on the left edge */
+.team-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--tone) 70%, white 30%), var(--tone));
+  opacity: .75;
+}
+.team-card-active {
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--tone) 75%, transparent), inset 0 1px 0 rgb(255 255 255 / .1),
+    0 0 22px -4px color-mix(in oklab, var(--tone) 60%, transparent), 0 8px 22px -8px rgb(0 0 0 / .6);
+}
+.team-card-active::before { opacity: 1; box-shadow: 0 0 12px var(--tone); }
+.team-card-out { opacity: .38; filter: grayscale(1); }
+
+.team-tag {
+  flex: none; padding: 1px 5px; border-radius: 4px; font-size: 8.5px; font-weight: 800; letter-spacing: .12em;
+  background: color-mix(in oklab, var(--tone) 24%, transparent); color: rgb(255 255 255 / .9);
+}
+.team-live { flex: none; width: 6px; height: 6px; border-radius: 99px; background: var(--tone); box-shadow: 0 0 0 0 var(--tone);
+  animation: teamLive 1.4s ease-out infinite; }
+@keyframes teamLive { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--tone) 70%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+
+.team-bar { position: relative; height: 9px; border-radius: 99px; background: rgb(0 0 0 / .5);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / .6), 0 0 0 1px rgb(255 255 255 / .05); overflow: hidden; }
+.team-bar-ghost { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: rgb(255 255 255 / .75);
+  transition: width .7s cubic-bezier(.4, 0, .2, 1) .45s; }
+.team-bar-fill { position: absolute; inset: 0 auto 0 0; display: flex; gap: 1.5px; border-radius: inherit; overflow: hidden;
+  transition: width .35s cubic-bezier(.2, .8, .2, 1); }
+.team-bar-fill > span { min-width: 2px; height: 100%;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--tone) 60%, white 40%) 0%, var(--tone) 55%, color-mix(in oklab, var(--tone) 80%, black 20%) 100%);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--tone) 50%, transparent); }
+
+.team-worm {
+  pointer-events: auto; display: inline-grid; place-items: center; min-width: 22px; height: 15px; padding: 0 4px; border-radius: 5px;
+  font-family: var(--font-num); font-size: 8.5px; line-height: 1; color: rgb(255 255 255 / .92);
+  background: color-mix(in oklab, var(--tone) 30%, rgb(0 0 0 / .35));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tone) 45%, transparent);
+  transition: background .3s, box-shadow .3s, transform .3s;
+}
+.team-worm-cur { background: var(--tone); color: rgb(10 14 22); box-shadow: 0 0 0 1.5px white, 0 0 10px var(--tone); transform: translateY(-1px); }
+.team-worm-dead { background: rgb(255 255 255 / .06); color: rgb(255 255 255 / .35); box-shadow: none; }

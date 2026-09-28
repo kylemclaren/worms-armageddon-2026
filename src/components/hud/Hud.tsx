@@ -1,4 +1,7 @@
-import { ArrowLeft, ArrowRight, ChevronsUp, CircleHelp, Crosshair, Pause, RotateCcw, SkipForward, Swords, Volume2, VolumeX, Wind } from 'lucide-react';
+import type React from 'react';
+import { motion } from 'motion/react';
+import { ArrowLeft, ArrowRight, ChevronsUp, CircleHelp, Crosshair, Pause, RotateCcw, Skull, SkipForward, Swords, Volume2, VolumeX, Wind } from 'lucide-react';
+import { RollingNumber } from '@/components/common/RollingNumber';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -11,33 +14,56 @@ import { imageUrl } from '@/lib/game';
 import * as ctl from '@/engine/controller.js';
 
 // ------------------------------------------------------------------ teams
-function TeamsPanel() {
-  const teams = useGame(s => s.teams);
+type TeamRow = {
+  idx: number; name: string; player: string | null; color: string; badge: string | null; hp: number; maxHp: number;
+  worms: { name: string; hp: number; alive: boolean; cur: boolean }[]; active: boolean; out: boolean;
+};
+
+/** One team: accent rail, name + badge, rolling total, a bar split per worm, and a worm roster. */
+function TeamCard({ t }: { t: TeamRow }) {
+  const living = t.worms.filter(w => w.alive && w.hp > 0);
+  const pct = Math.min(100, (t.hp / t.maxHp) * 100);
   return (
-    <div className="pointer-events-none fixed left-3 top-3 flex w-[min(240px,44vw)] flex-col gap-1.5" data-testid="teams">
-      {teams.map(t => (
-        <Card key={t.idx} className={cn('gap-1.5 rounded-xl px-3 py-2 transition-all duration-300',
-          t.active && 'ring-2', t.out && 'opacity-35 grayscale')} style={t.active ? { boxShadow: `0 0 0 2px ${t.color}, 0 6px 20px rgba(0,0,0,.35)` } : undefined}>
-          <div className="flex items-center gap-1.5 text-xs font-bold">
-            {t.badge && <Badge variant={t.badge === 'YOU' ? 'default' : 'secondary'} className="h-4 rounded px-1 text-[9px] font-extrabold tracking-wider">{t.badge}</Badge>}
-            <span className="truncate uppercase tracking-wide" style={{ color: t.color }}>{t.player ? `${t.player}` : t.name}</span>
-            <span className="ml-auto font-num text-[11px] tabular-nums text-foreground/85">{t.hp}</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-black/45">
-            <div className="h-full rounded-full transition-[width] duration-500 ease-out" style={{ width: `${Math.min(100, (t.hp / t.maxHp) * 100)}%`, background: t.color, boxShadow: `0 0 10px ${t.color}` }} />
-          </div>
-          <div className="flex gap-1">
-            {t.worms.map((w, i) => (
-              <Tooltip key={i}>
-                <TooltipTrigger asChild>
-                  <span className={cn('pointer-events-auto size-2.5 rounded-[3px] bg-white/20 transition-all', w.alive && 'bg-[currentColor] shadow-[0_0_5px_currentColor]', w.cur && 'outline outline-2 outline-offset-1 outline-white')} style={{ color: t.color }} />
-                </TooltipTrigger>
-                <TooltipContent side="bottom">{w.name} · {w.alive ? `${w.hp} HP` : 'out'}</TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-        </Card>
-      ))}
+    <motion.div layout transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+      className={cn('team-card', t.active && 'team-card-active', t.out && 'team-card-out')}
+      style={{ '--tone': t.color } as React.CSSProperties} data-testid={`team-${t.idx}`}>
+      <div className="flex items-center gap-1.5">
+        <span className={cn('truncate text-[11px] font-extrabold uppercase tracking-[0.14em]', t.out && 'line-through')}
+          style={{ color: `color-mix(in oklab, ${t.color} 82%, white 18%)` }}>{t.player || t.name}</span>
+        {t.badge && <span className="team-tag">{t.badge}</span>}
+        {t.active && !t.out && <span className="team-live" aria-label="Playing now" />}
+        <RollingNumber value={t.hp} className="ml-auto font-num text-[13px] text-foreground" />
+      </div>
+      {/* the bar: a ghost that lags behind (shows the damage just taken), then per-worm segments */}
+      <div className="team-bar">
+        <div className="team-bar-ghost" style={{ width: `${pct}%` }} />
+        <div className="team-bar-fill" style={{ width: `${pct}%` }}>
+          {living.map((w, i) => <span key={i} style={{ flexGrow: Math.max(1, w.hp) }} />)}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {t.worms.map((w, i) => (
+          <Tooltip key={i}>
+            <TooltipTrigger asChild>
+              <span className={cn('team-worm', !w.alive && 'team-worm-dead', w.cur && 'team-worm-cur')}>
+                {w.alive ? w.hp : <Skull className="size-2.5" />}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{w.name} · {w.alive ? `${w.hp} HP` : 'out'}</TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function TeamsPanel() {
+  const teams = useGame(s => s.teams) as TeamRow[];
+  // W:A orders the bars by strength; eliminated teams sink to the bottom
+  const sorted = [...teams].sort((a, b) => (+a.out - +b.out) || (b.hp - a.hp) || (a.idx - b.idx));
+  return (
+    <div className="pointer-events-none fixed left-3 top-3 flex w-[min(250px,44vw)] flex-col gap-1.5" data-testid="teams">
+      {sorted.map(t => <TeamCard key={t.idx} t={t} />)}
     </div>
   );
 }

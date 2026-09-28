@@ -37,7 +37,7 @@ Add `?testmap` to the URL for the deterministic movement test course, and `?perf
 
 - **Destructible bitmap terrain** with procedural islands, caves and tunnels, baked lighting and drop shadows, and four themes.
 - **Four worlds**: Rolling Hills, Red Planet, Frozen Wastes and Sand Dunes.
-- **23 weapons and utilities**, including bazooka, homing missile, grenade, cluster bomb, banana bomb, Holy Hand Grenade, shotgun, minigun, fire punch, baseball bat, dynamite, mines, sheep, air strike, Armageddon, Concrete Donkey, ninja rope, jet pack, teleport, girder, blowtorch, skip go and surrender.
+- **43 weapons and utilities**, covering most of the W:A arsenal: bazooka, homing missile, mortar, homing pigeon, grenade, cluster bomb, banana bomb, Holy Hand Grenade, petrol bomb, shotgun, handgun, Uzi, minigun, longbow, fire punch, dragon ball, kamikaze, prod, baseball bat, battle axe, dynamite, mines, Ming vase, sheep, super sheep (steerable), old woman, mad cows, air/napalm/mine/sheep strikes, earthquake, scales of justice, Concrete Donkey, Armageddon, ninja rope, jet pack, teleport, girder, blowtorch, pneumatic drill, skip go and surrender. Each weapon is held at its own size and grip.
 - **Turn rules from the original**: wind, retreat time, fall damage, drowning, crates on parachutes, oil drums, sudden death with rising water.
 - **Online multiplayer**: host a game, share the 6-letter code or `?join=CODE` link, and up to 4 players each take a team.
   - The host's browser runs the authoritative simulation and streams snapshots about 30 times a second.

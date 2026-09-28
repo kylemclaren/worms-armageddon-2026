@@ -12,7 +12,7 @@ import { THEMES } from './terrain.js';
 import { store } from './store.js';
 import { UIBridge } from './bridge.js';
 
-export const BUILD = '2026-09-28 toast-v2';
+export const BUILD = '2026-09-28 arsenal-2';
 
 const $ = id => document.getElementById(id);
 let canvas, renderer;

@@ -3,6 +3,7 @@ import { images } from './assets.js';
 import { drawGirder } from './terrain.js';
 import { WORLD_W, WORLD_H } from './game.js';
 import { setPxScale } from './entities.js';
+import { crispImage } from './wormsprite.js';
 import { TAU, clamp } from './util.js';
 
 export class Renderer {
@@ -339,24 +340,50 @@ export class Renderer {
     c.restore();
   }
 
+  /**
+   * The weapon in the worm's hand. Each weapon declares how it's held (weapons.js `hold`):
+   *   len: world px of the item's longest side (the worm is 42 tall), so art of any
+   *        aspect ratio comes out a sensible, consistent size
+   *   at:  where the hand grips, as a fraction of the icon image (x, y)
+   *   rot0: the direction the art points, if it isn't drawn pointing right
+   *   up:  a thrown/placed item carried upright in front, tipping a little with the aim
+   */
   _heldWeapon(c, g) {
     const w = g.cur;
     if (!w || !w.alive || g.state !== 'turn' || w.state !== 'idle' || w.walking) return;
     const wp = g.weapon;
-    if (!wp || wp.util || wp.needsTarget && wp.instant) return;
-    const img = images[wp.icon];
+    if (!wp || wp.hold === null || (!wp.hold && (wp.util || wp.needsTarget && wp.instant))) return;
+    const h = wp.hold || { up: true, len: 14 };
+    const img = images[h.icon || wp.icon];
     if (!img) return;
+    const k = h.len / Math.max(img.width, img.height);
+    const iw = img.width * k, ih = img.height * k;
     const v = w.aimVec();
     const ang = Math.atan2(v.y, v.x);
-    const h = 15;
-    const iw = img.width * (h / img.height);
+    const f = w.facing;
+    const src = crispImage(img, iw * (g.pxScale || 1), ih * (g.pxScale || 1));
     c.save();
-    // grip sits at body level, below the (large) face of the W:A-style sprite
-    c.translate(w.x + w.facing * 6, w.y + 4);
-    // icons are drawn pointing right/up-right; keep them upright when facing left
-    c.rotate(w.facing > 0 ? ang : ang - Math.PI);
-    if (w.facing < 0) c.scale(-1, 1);
-    c.drawImage(img, 0, -h / 2, iw, h);
+    if (h.up) {
+      // carried in front of the belly, bobbing with the idle breath
+      const bob = Math.sin(w.anim * 3.2) * 0.8;
+      c.translate(w.x + f * 10, w.y + 3 + bob);
+      c.rotate(f * (w.aim * 0.25));
+      if (f < 0) c.scale(-1, 1);
+      if (h.glow) {
+        const gr = c.createRadialGradient(0, -ih / 2, 1, 0, -ih / 2, ih);
+        gr.addColorStop(0, 'rgba(255,220,120,.9)'); gr.addColorStop(1, 'rgba(255,120,0,0)');
+        c.fillStyle = gr; c.beginPath(); c.arc(0, -ih / 2, ih, 0, Math.PI * 2); c.fill();
+      }
+      c.drawImage(src, -iw / 2, -ih * 0.85, iw, ih);
+    } else {
+      const [ax, ay] = h.at || [0.4, 0.6];
+      // grip sits at body level, below the (large) face of the W:A-style sprite
+      c.translate(w.x + f * 7, w.y - 1);
+      c.rotate(f > 0 ? ang : ang - Math.PI);
+      if (f < 0) c.scale(-1, 1);
+      if (h.rot0) c.rotate(-h.rot0);
+      c.drawImage(src, -ax * iw, -ay * ih, iw, ih);
+    }
     c.restore();
   }
 

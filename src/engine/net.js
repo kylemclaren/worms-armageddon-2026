@@ -6,6 +6,7 @@
 import { sound } from './audio.js';
 import { toast } from './toast.js';
 import { Projectile, Mine, Barrel, Flame, Crate, Sheep, Plane, Donkey, Armageddon } from './entities.js';
+import { Pigeon, Walker, SuperSheep, Arrow, Fireball, Kamikaze, Quake } from './critters.js';
 import { Grave } from './game.js';
 
 // ------------------------------------------------------------------ connection
@@ -35,9 +36,13 @@ const FIELDS = {
   mine: ['x', 'y', 'trig', 'arm', 'dud'], barrel: ['x', 'y'], flame: ['x', 'y', 't', 'life'],
   crate: ['x', 'y', 'kind', 'chute'], sheep: ['x', 'y', 'vx', 'vy', 'rest', 'dir', 't', 'squash', 'r'],
   grave: ['x', 'y', 'color'], plane: ['x', 'y', 'dir'], donkey: ['x', 'y'], armageddon: ['t'],
+  pigeon: ['x', 'y', 'vx', 'vy', 't'], walker: ['x', 'y', 'dir', 't', 'kind', 'rest', 'r'],
+  supersheep: ['x', 'y', 'vx', 'vy', 'rest', 'dir', 't', 'squash', 'r', 'flying', 'ang'],
+  arrow: ['x', 'y', 'rot', 'stuck'], fireball: ['x', 'y', 'vx'], kamikaze: ['t'], quake: ['t'],
 };
 const CLASSES = { proj: Projectile, mine: Mine, barrel: Barrel, flame: Flame, crate: Crate, sheep: Sheep,
-  grave: Grave, plane: Plane, donkey: Donkey, armageddon: Armageddon };
+  grave: Grave, plane: Plane, donkey: Donkey, armageddon: Armageddon,
+  pigeon: Pigeon, walker: Walker, supersheep: SuperSheep, arrow: Arrow, fireball: Fireball, kamikaze: Kamikaze, quake: Quake };
 const W_FIELDS = ['x', 'y', 'vx', 'vy', 'state', 'facing', 'aim', 'hp', 'pending', 'dead', 'dying', 'spin', 'flip',
   'walking', 'walkDist', 'hurtT', 'dizzyT', 'landT', 'airT'];
 

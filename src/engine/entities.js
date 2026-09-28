@@ -104,7 +104,7 @@ export class Worm {
   }
 
   get alive() { return !this.dead && !this.dying; }
-  busy() { return this.state === 'air' || this.state === 'drown' || this.state === 'punch'; }
+  busy() { return this.state === 'air' || this.state === 'drown' || this.state === 'punch' || this.state === 'kamikaze'; }
 
   /** Direction vector of the crosshair. */
   aimVec() { return { x: Math.cos(this.aim) * this.facing, y: Math.sin(this.aim) }; }
@@ -275,7 +275,7 @@ export class Worm {
     }
     if (this.y > g.waterY + 2) { g.drown(this); return; }
 
-    if (this.state === 'rope' || this.state === 'jet' || this.state === 'torch') return; // driven by the tool
+    if (this.state === 'rope' || this.state === 'jet' || this.state === 'torch' || this.state === 'kamikaze') return; // driven by the tool
 
     if (this.state === 'punch') {
       this.punchT -= dt;
@@ -334,6 +334,7 @@ export class Worm {
       if (frame === 'tumble') rot = this.anim * 12 * this.facing;
       else if (this.state === 'rope') rot = Math.atan2(this.x - g.rope.ax, g.rope.ay - this.y) * 0.6;
       else if (this.state === 'drown') rot = Math.sin(this.anim * 6) * 0.3;
+      else if (this.state === 'kamikaze') rot = Math.atan2(this.vy, Math.abs(this.vx) + 1) * this.facing + Math.PI / 2 * this.facing;
       const centered = frame === 'jump' || frame === 'fall' || frame === 'tumble';
       const H = Worm.H;
       const y = centered ? this.y - 6 : this.ry;
@@ -703,10 +704,11 @@ export class Plane {
   busy() { return !this.dead; }
   update(g, dt) {
     this.x += this.dir * this.speed * dt;
-    const n = this.spec.n, gap = 26;
+    const n = this.spec.n, gap = this.spec.gap || 26;
     const startX = this.tx - this.dir * (gap * (n - 1) / 2) - this.dir * 90; // lead: bombs carry forward
     while (this.dropped < n && (this.x - startX) * this.dir >= this.dropped * gap) {
-      g.add(new Projectile({ x: this.x, y: this.y + 10, vx: this.dir * 140, vy: 60, r: 3, wind: 1, impact: true,
+      if (this.spec.drop) this.spec.drop(g, this.x, this.y + 10, this.dir);
+      else g.add(new Projectile({ x: this.x, y: this.y + 10, vx: this.dir * 140, vy: 60, r: 3, wind: 1, impact: true,
         radius: this.spec.radius, damage: this.spec.damage, owner: this.owner, sprite: 'icon_homing', size: 12, spriteRot: Math.PI / 4,
         hitsWorms: true, sfx: 'explosion_small' }));
       this.dropped++;

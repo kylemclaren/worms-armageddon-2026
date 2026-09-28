@@ -519,22 +519,23 @@ export class Game {
     if (j.fuel <= 0 && w.state === 'jet') this.stopJet(w);
   }
 
-  startTorch(w) {
-    const self = this;
+  /** Blowtorch digs along the aim; the pneumatic drill (down) bores straight down. */
+  startTorch(w, o = {}) {
     this.torch = {
-      t: 2.8, dir: w.facing, ang: clamp(w.aim, -0.5, 0.9), dead: false, x: w.x, y: w.y,
+      t: o.down ? 3.2 : 2.8, dir: w.facing, ang: o.down ? Math.PI / 2 : clamp(w.aim, -0.5, 0.9), dead: false, x: w.x, y: w.y,
+      sfx: o.down ? 'drill' : 'dig', speed: o.down ? 52 : 58, down: !!o.down,
       busy() { return !this.dead; }, update() {}, draw() {},
     };
     w.state = 'torch';
-    sound.loop('dig', { vol: 0.5 });
-    void self;
+    sound.loop(this.torch.sfx, { vol: 0.5 });
   }
   tickTorch(w, dt) {
     const T = this.torch;
     T.t -= dt;
-    const dx = Math.cos(T.ang) * T.dir, dy = Math.sin(T.ang);
+    const dx = T.down ? 0 : Math.cos(T.ang) * T.dir, dy = Math.sin(T.ang);
     this.terrain.carve(w.x + dx * 8, w.y - 3 + dy * 8, 13, true);
-    w.x += dx * 58 * dt; w.y += dy * 58 * dt;
+    if (T.down) this.cam.shake = Math.max(this.cam.shake, 1.2);
+    w.x += dx * T.speed * dt; w.y += dy * T.speed * dt;
     T.x = w.x; T.y = w.y;
     for (const o of this.worms) if (o !== w && o.alive && Math.hypot(o.x - w.x - dx * 12, o.y - w.y) < 14 && !o._torched) {
       o._torched = true; o.hurt(this, 15, w); o.launch(dx * 160, -120);
@@ -542,7 +543,7 @@ export class Game {
     if (Math.random() < 0.6) this.fx.add({ k: 'spark', x: w.x + dx * 14, y: w.y - 3 + dy * 14, vx: rand(-120, 120) - dx * 100, vy: rand(-160, 20),
       life: rand(0.2, 0.5), t: 0, g: 500 });
     if (T.t <= 0 || w.state !== 'torch') {
-      T.dead = true; this.torch = null; sound.stopLoop('dig');
+      T.dead = true; this.torch = null; sound.stopLoop(T.sfx || 'dig');
       for (const o of this.worms) o._torched = false;
       if (w.state === 'torch') { w.state = 'air'; w.rest = false; w.vx = 0; w.vy = 0; }
     }
@@ -631,7 +632,7 @@ export class Game {
   /** Point the camera at whatever is most interesting right now. */
   _followAction() {
     if (this.cam.manualT > 0) return;
-    const live = this.objects.filter(o => !o.dead && (o.type === 'proj' || o.type === 'sheep' || o.type === 'donkey' || o.type === 'plane'));
+    const live = this.objects.filter(o => !o.dead && (o.type === 'proj' || o.type === 'sheep' || o.type === 'donkey' || o.type === 'plane' || o.follow));
     const flying = live.find(o => o.type !== 'plane') || live[0];
     if (flying) { if (this.cam.target !== flying) this.cam.follow(flying); return; }
     const airborne = this.worms.find(w => !w.dead && w.state === 'air' && w !== this.cur && Math.hypot(w.vx, w.vy) > 60);
@@ -699,7 +700,8 @@ export class Game {
     if (!w || !w.alive || !acting) { c.jump = c.backflip = c.firePressed = false; c.target = null; return; }
 
     if (this.state === 'control') {
-      if (c.firePressed && this.controlled?.type === 'sheep') this.controlled.boom(this);
+      if (this.controlled?.control) this.controlled.control(this, c, dt);
+      else if (c.firePressed && this.controlled?.type === 'sheep') this.controlled.boom(this);
       c.firePressed = false; c.jump = false; c.backflip = false;
       return;
     }

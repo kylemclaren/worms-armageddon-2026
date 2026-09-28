@@ -13,7 +13,9 @@ export const SFX_NAMES = ['explosion_big','explosion_med','explosion_small','baz
   'shotgun','minigun','grenade_bounce','fuse','splash','jump','thud','teleport','crate_drop',
   'collect','mine_beep','airplane','holy','girder','firepunch','jetpack','dig','turn_start',
   'timer_tick','sudden_death','victory','wind','select','skip','drown','banana',
-  'sheep','rope','bat','homing_lock','armageddon','donkey','surrender','walk','whoosh','barrel'];
+  'sheep','rope','bat','homing_lock','armageddon','donkey','surrender','walk','whoosh','barrel',
+  'pigeon','uzi','handgun','bow','arrow_hit','dragonball','kamikaze','prod','axe','quake','scales','drill',
+  'cow','oldwoman','vase','petrol','mortar','napalm'];
 
 export const VOX_LINES = ['fire','incoming','ouch','ohdear','watchthis','takecover','missed',
   'revenge','hello','byebye','victory','nooo','comeonthen','uhoh','yessir','excellent','laugh',
