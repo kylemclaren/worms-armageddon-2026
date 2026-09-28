@@ -187,9 +187,19 @@ wss.on('connection', ws => {
 // keep connections alive through proxies, drop dead ones
 setInterval(() => { for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue; } ws.alive = false; ws.ping(); } }, 25000);
 
+// Crazy Machines lives in its own service on :8090; the Sprite has one public port, so forward /crazy/*.
+function toCrazy(req, res) {
+  const up = http.request({ host: '127.0.0.1', port: 8090, path: req.url, method: req.method, headers: req.headers }, r => {
+    res.writeHead(r.statusCode || 502, r.headers); r.pipe(res);
+  });
+  up.on('error', () => { if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'text/plain' }); res.end('Crazy Machines is starting up, try again in a moment.'); });
+  req.pipe(up);
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = decodeURIComponent(url.pathname);
+  if (p === '/crazy' || p.startsWith('/crazy/')) return toCrazy(req, res);
   if (p === '/api/jev' && req.method === 'POST') return jev(req, res);
   if (p === '/api/telemetry' && req.method === 'POST') {
     let body = '';
