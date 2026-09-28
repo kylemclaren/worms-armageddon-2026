@@ -390,3 +390,30 @@ kbd{display:inline-block;background:#2b2415;border:1px solid #6b5a33;border-bott
   border-radius:4px;background:rgba(255,255,255,.14);color:#e4e4e7;vertical-align:1px}
 .tbBadge.jev{background:rgba(96,165,250,.25);color:#bfdbfe}
 #btnRow button svg{width:20px;height:20px}
+
+/* ============ ONLINE ============ */
+.onlineRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mpInput{background:rgba(14,22,38,.72);color:#fff;border:1.5px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 12px;
+  font:800 14px Nunito;outline:none;min-width:0}
+.mpInput:focus{border-color:var(--gold)}
+#mpName{flex:1 1 160px}
+.mpInput.code{width:112px;text-transform:uppercase;letter-spacing:3px;text-align:center;font-family:Bungee,Nunito}
+.mpBtn{border:0;border-radius:10px;padding:10px 16px;font:900 13px Nunito;cursor:pointer;color:#3b2300;
+  background:linear-gradient(#ffd75e,var(--gold-d));box-shadow:0 3px 0 #9c6200}
+.mpBtn:active{transform:translateY(2px);box-shadow:0 1px 0 #9c6200}
+.mpBtn.ghost{background:rgba(255,255,255,.1);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+.mpBtn[disabled]{opacity:.45;cursor:not-allowed}
+.mpOr{color:#8aa0bd;font:800 12px Nunito}
+.lobby{margin-top:10px;background:rgba(14,22,38,.72);border-radius:14px;padding:14px 16px;box-shadow:inset 0 0 0 1.5px rgba(255,200,61,.35);
+  display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
+.lbCode{font:400 30px/1 Bungee,Nunito;letter-spacing:4px;color:var(--gold)}
+.lbSub{font:800 11px Nunito;color:#9fb3cc;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.lbPlayers{display:flex;flex-wrap:wrap;gap:6px}
+.lbP{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.07);border-radius:999px;padding:5px 10px 5px 6px;font:800 13px Nunito;color:#fff}
+.lbP i{width:12px;height:12px;border-radius:50%}
+.lbP.empty{opacity:.4;font-weight:700}
+.lbActions{display:flex;gap:8px}
+body.inLobbyGuest #modeSec,body.inLobby #modeSec{display:none}
+body.inLobbyGuest .terrainCards,body.inLobbyGuest .sliderGrid,body.inLobbyGuest .segRow{pointer-events:none;opacity:.55;filter:grayscale(.3)}
+body.inLobby .onlineRow,body.inLobbyGuest .onlineRow{display:none}
+@media(max-width:820px){.lobby{grid-template-columns:1fr}}

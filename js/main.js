@@ -8,12 +8,14 @@ import { WEAPONS } from './weapons.js';
 import { images } from './assets.js';
 import { buildMenu } from './menu.js';
 import { toast } from './toast.js';
+import { Conn, NetHost, NetGuest } from './net.js';
+import { THEMES } from './terrain.js';
 
 const VOL_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
 const VOL_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5zM22 9l-6 6M16 9l6 6"/></svg>';
 
 const $ = id => document.getElementById(id);
-export const BUILD = '2026-09-28 desert-toasts';
+export const BUILD = '2026-09-28 online';
 
 // ---- telemetry: real frame timings from the player's machine, sent to our own server
 function gpuName() {
@@ -64,6 +66,13 @@ let paused = false;
     }
   } catch { /* storage unavailable */ }
   menu.refresh();
+  const invite = new URLSearchParams(location.search).get('join');
+  if (invite) {
+    $('mpCode').value = invite.toUpperCase();
+    history.replaceState(null, '', location.pathname);            // don't re-join on refresh
+    if ($('mpName').value.trim()) joinOnline(invite);
+    else { $('mpName').focus(); toast.info('You were invited to a game', { description: 'Enter your name and press Join.', duration: 8000 }); }
+  }
 })();
 
 function readOpts() {
@@ -77,22 +86,37 @@ function readOpts() {
   };
 }
 
-function startGame() {
+let net = null;          // { conn, role: 'host'|'guest', seat, players, host?: NetHost, guest?: NetGuest }
+
+function startGame(forced) {
   sound.init(); sound.resume();
   $('menu').classList.add('hidden');
   $('gameover').classList.add('hidden');
-  const opts = readOpts();
+  const opts = forced || readOpts();
   gfx.mode = opts.gfx || 'auto';
   renderer.setQuality(gfx.mode === 'auto' ? 'high' : gfx.mode);
   gfx.t = 0; gfx.frames = 0; gfx.grace = 2;
   game = new Game(opts, ui);
   ui.attach(game);
-  game.start();
+  if (net?.role === 'host') net.host = new NetHost(net.conn, game, ui);
+  if (net?.role === 'guest') net.guest = new NetGuest(net.conn, game, ui);
+  if (net?.role !== 'guest') game.start();
   canvas.focus();
 }
 
-$('btnStart').onclick = startGame;
+$('btnStart').onclick = () => {
+  if (!net) return startGame();
+  if (net.role !== 'host' || net.players.length < 2) return;
+  // host: resolve everything random so all clients build the identical match
+  const opts = readOpts();
+  if (opts.terrain === 'random') opts.terrain = Object.keys(THEMES)[Math.floor(Math.random() * Object.keys(THEMES).length)];
+  Object.assign(opts, { teams: 'online', seats: net.players, seed: (Math.random() * 1e9) | 0,
+    mapStyle: Math.random() < 0.35 ? 'islands' : 'island', worms: Math.min(opts.worms, 6) });
+  net.conn.relay({ t: 'start', opts });
+  startGame({ ...opts, mySeat: 0 });
+};
 $('btnAgain').onclick = () => {
+  if (net) leaveOnline(true);
   $('gameover').classList.add('hidden');
   $('hud').classList.add('hidden');
   $('menu').classList.remove('hidden');
@@ -275,6 +299,7 @@ for (const b of pad.querySelectorAll('[data-k]')) {
 
 function applyInput() {
   const c = game.ctrl;
+  if (game.curTeam?.remote && net?.role === 'host') return;   // remote player's inputs arrive over the network
   if (!game.isHumanTurn() || ui.panelOpen()) {
     edge.fire = edge.jump = edge.backflip = edge.up = edge.down = false;
     if (!game.isHumanTurn()) return;
@@ -292,6 +317,98 @@ function applyInput() {
   if (edge.jump) { c.jump = true; edge.jump = false; }
   if (edge.backflip) { c.backflip = true; edge.backflip = false; }
 }
+
+// ------------------------------------------------------------------ online lobby
+const nameKey = 'wa-name';
+try { $('mpName').value = localStorage.getItem(nameKey) || ''; } catch { /* no storage */ }
+const myName = () => { const n = $('mpName').value.trim() || `Player ${1000 + Math.floor(Math.random() * 9000)}`; try { localStorage.setItem(nameKey, n); } catch { /* ignore */ } return n; };
+const TEAM_COLORS = ['#ff5a4f', '#4fb0ff', '#6be05a', '#ffd23f'];
+
+function renderLobby() {
+  const el = $('lobby');
+  if (!net) { el.classList.add('hidden'); document.body.classList.remove('inLobby', 'inLobbyGuest'); $('btnStart').querySelector('.bsLabel').textContent = 'LET BATTLE COMMENCE'; $('btnStart').disabled = false; return; }
+  document.body.classList.toggle('inLobby', net.role === 'host');
+  document.body.classList.toggle('inLobbyGuest', net.role === 'guest');
+  const link = `${location.origin}${location.pathname}?join=${net.conn.code}`;
+  const seats = [0, 1, 2, 3].map(i => net.players[i]);
+  el.innerHTML = `
+    <div><div class="lbSub">Room code</div><div class="lbCode">${net.conn.code}</div></div>
+    <div><div class="lbSub">Players (${net.players.length}/4)</div><div class="lbPlayers">${seats.map((p, i) => p
+      ? `<span class="lbP"><i style="background:${TEAM_COLORS[i]}"></i>${escapeHtml(p.name)}${p.seat === net.seat ? ' (you)' : ''}${p.seat === 0 ? ' · host' : ''}</span>`
+      : '<span class="lbP empty"><i style="background:#555"></i>waiting…</span>').join('')}</div></div>
+    <div class="lbActions">${net.role === 'host' ? '<button class="mpBtn" id="btnCopyLink" type="button">Copy invite link</button>' : ''}<button class="mpBtn ghost" id="btnLeave" type="button">Leave</button></div>`;
+  el.classList.remove('hidden');
+  if (net.role === 'host') $('btnCopyLink').onclick = () => {
+    navigator.clipboard?.writeText(link).then(() => toast.success('Invite link copied', { description: link }), () => toast.info('Share this link', { description: link, duration: 8000 }));
+  };
+  $('btnLeave').onclick = () => leaveOnline(true);
+  const label = $('btnStart').querySelector('.bsLabel');
+  if (net.role === 'host') { label.textContent = net.players.length < 2 ? 'WAITING FOR PLAYERS' : `START ONLINE MATCH · ${net.players.length} PLAYERS`; $('btnStart').disabled = net.players.length < 2; }
+  else { label.textContent = 'WAITING FOR HOST'; $('btnStart').disabled = true; }
+}
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+function wireConn(conn) {
+  conn.on('lobby', m => { net.players = m.players; renderLobby(); })
+    .on('error', m => { toast.error('Could not join', { description: m.error }); leaveOnline(false); })
+    .on('peer-left', m => {
+      net.players = m.players; renderLobby();
+      if (net.host) net.host.peerLeft(m.seat); else toast.info('A player left the lobby');
+    })
+    .on('host-left', () => {
+      toast.error('The host left the game', { description: 'Back to the menu.' });
+      leaveOnline(false);
+      if (game) $('btnAgain').onclick();
+    })
+    .on('close', () => { if (net) { toast.error('Disconnected from the game server'); leaveOnline(false); } })
+    .on('msg', m => {
+      const msg = m.msg;
+      if (net?.role === 'host') net.host?.onInput(m.from, msg);
+      else if (msg.t === 'start') startGame({ ...msg.opts, mySeat: net.seat });
+      else net?.guest?.onMessage(msg);
+    });
+}
+
+async function hostOnline() {
+  sound.init(); sound.resume();
+  const conn = new Conn();
+  try { await conn.open(); } catch (e) { return toast.error('Online play unavailable', { description: e.message }); }
+  net = { conn, role: 'host', seat: 0, players: [] };
+  wireConn(conn);
+  conn.on('hosted', m => {
+    conn.code = m.code; net.players = m.players; renderLobby();
+    toast.success('Game hosted', { description: `Share code ${m.code} or copy the invite link.`, duration: 5000 });
+  });
+  conn.send({ t: 'host', name: myName() });
+}
+
+async function joinOnline(code) {
+  sound.init(); sound.resume();
+  code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length !== 6) return toast.error('Enter the 6-letter room code');
+  const conn = new Conn();
+  try { await conn.open(); } catch (e) { return toast.error('Online play unavailable', { description: e.message }); }
+  net = { conn, role: 'guest', seat: null, players: [] };
+  wireConn(conn);
+  toast.loading('Joining game', { id: 'join', loader: 'dots', description: code });
+  conn.on('joined', m => {
+    conn.code = m.code; net.seat = m.seat; net.players = m.players; renderLobby();
+    toast.success('Joined', { id: 'join', description: 'Waiting for the host to start.' });
+  });
+  conn.send({ t: 'join', code, name: myName() });
+}
+
+function leaveOnline(tell) {
+  if (!net) return;
+  net.host?.release();
+  const c = net.conn; net = null;
+  if (tell) c.close(); else try { c.close(); } catch { /* gone */ }
+  renderLobby();
+}
+
+$('btnHost').onclick = hostOnline;
+$('btnJoin').onclick = () => joinOnline($('mpCode').value);
+$('mpCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinOnline($('mpCode').value); });
 
 // ------------------------------------------------------------------ loop
 
@@ -332,7 +449,12 @@ function frame(now) {
     const t0 = performance.now();
     game.ai.frameStart = t0;
     let ticks = 0;
-    while (acc >= STEP && ticks < 3) { applyInput(); game.update(STEP); acc -= STEP; ticks++; }
+    while (acc >= STEP && ticks < 3) {
+      applyInput();
+      if (net?.guest) { net.guest.sendInput(); net.guest.update(STEP); }
+      else { game.update(STEP); net?.host?.afterTick(); }
+      acc -= STEP; ticks++;
+    }
     if (acc > STEP) acc = 0; // too far behind: run slow for a moment instead of spiralling
     const t1 = performance.now();
     renderer.draw(game, mouse.in ? mouse : null);

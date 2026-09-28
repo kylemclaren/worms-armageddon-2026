@@ -1,1 +1,1 @@
-{"type":"module","private":true}
+{"type":"module","private":true,"dependencies":{"ws":"^8.22.0"}}

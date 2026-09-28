@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
+import { WebSocketServer } from 'ws';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PORT = +(process.env.PORT || 8080);
@@ -117,7 +118,76 @@ function send(res, code, obj) {
   res.end(JSON.stringify(obj));
 }
 
-http.createServer(async (req, res) => {
+// ------------------------------------------------------------------ multiplayer rooms
+// A dumb relay: the host's browser runs the authoritative game; guests send inputs.
+// Rooms are keyed by a short code; the server only forwards messages.
+const rooms = new Map();                 // code -> { host, guests: Map<seat, ws>, started, names }
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // no 0/O/1/I
+const newCode = () => { let c; do { c = Array.from({ length: 6 }, () => CODE_CHARS[crypto.randomInt(CODE_CHARS.length)]).join(''); } while (rooms.has(c)); return c; };
+const wsend = (ws, obj) => { if (ws && ws.readyState === 1) ws.send(typeof obj === 'string' ? obj : JSON.stringify(obj)); };
+const cleanName = n => String(n || '').replace(/[^\p{L}\p{N} _.-]/gu, '').trim().slice(0, 18) || 'Player';
+const players = room => [{ seat: 0, name: room.names.get(0) }, ...[...room.guests.keys()].map(s => ({ seat: s, name: room.names.get(s) }))];
+
+const wss = new WebSocketServer({ noServer: true, maxPayload: 256 * 1024 });
+wss.on('connection', ws => {
+  ws.alive = true;
+  ws.on('pong', () => { ws.alive = true; });
+  ws.on('message', raw => {
+    let m; try { m = JSON.parse(raw); } catch { return; }
+    const room = ws.room && rooms.get(ws.room);
+    switch (m.t) {
+      case 'host': {
+        if (ws.room) return;
+        const code = newCode();
+        rooms.set(code, { host: ws, guests: new Map(), started: false, names: new Map([[0, cleanName(m.name)]]), next: 1 });
+        ws.room = code; ws.seat = 0;
+        console.log(`[mp] room ${code} hosted`);
+        return wsend(ws, { t: 'hosted', code, seat: 0, players: players(rooms.get(code)) });
+      }
+      case 'join': {
+        const r = rooms.get(String(m.code || '').toUpperCase().trim());
+        if (!r) return wsend(ws, { t: 'error', error: 'No game with that code.' });
+        if (r.started) return wsend(ws, { t: 'error', error: 'That game has already started.' });
+        if (r.guests.size >= 3) return wsend(ws, { t: 'error', error: 'That game is full (4 players).' });
+        const seat = r.next++;
+        r.guests.set(seat, ws); r.names.set(seat, cleanName(m.name));
+        ws.room = [...rooms.entries()].find(([, v]) => v === r)[0]; ws.seat = seat;
+        const list = players(r);
+        wsend(ws, { t: 'joined', code: ws.room, seat, players: list });
+        wsend(r.host, { t: 'lobby', players: list });
+        for (const g of r.guests.values()) if (g !== ws) wsend(g, { t: 'lobby', players: list });
+        return;
+      }
+      case 'relay': {                     // host -> one guest (to) or all guests; guest -> host
+        if (!room) return;
+        const payload = JSON.stringify({ t: 'msg', from: ws.seat, msg: m.msg });
+        if (ws.seat === 0) {
+          if (m.msg?.t === 'start') room.started = true;
+          if (m.to != null) wsend(room.guests.get(m.to), payload);
+          else for (const g of room.guests.values()) wsend(g, payload);
+        } else wsend(room.host, payload);
+        return;
+      }
+    }
+  });
+  ws.on('close', () => {
+    const code = ws.room, room = code && rooms.get(code);
+    if (!room) return;
+    if (ws.seat === 0) {
+      for (const g of room.guests.values()) wsend(g, { t: 'host-left' });
+      rooms.delete(code);
+      console.log(`[mp] room ${code} closed`);
+    } else {
+      room.guests.delete(ws.seat); room.names.delete(ws.seat);
+      wsend(room.host, { t: 'peer-left', seat: ws.seat, players: players(room) });
+      for (const g of room.guests.values()) wsend(g, { t: 'lobby', players: players(room) });
+    }
+  });
+});
+// keep connections alive through proxies, drop dead ones
+setInterval(() => { for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue; } ws.alive = false; ws.ping(); } }, 25000);
+
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = decodeURIComponent(url.pathname);
   if (p === '/api/jev' && req.method === 'POST') return jev(req, res);
@@ -152,4 +222,9 @@ http.createServer(async (req, res) => {
     if (req.method === 'HEAD') return res.end();
     fs.createReadStream(file).pipe(res);
   });
-}).listen(PORT, '0.0.0.0', () => console.log(`worms on :${PORT} — Jev ${JEV_BASE() ? 'via Sprites gateway' : JEV_KEY() ? 'via API key' : 'disabled'}, assets ${TIGRIS() ? 'from Tigris' : 'local'}`));
+});
+server.on('upgrade', (req, sock, head) => {
+  if (new URL(req.url, 'http://x').pathname !== '/ws') return sock.destroy();
+  wss.handleUpgrade(req, sock, head, ws => wss.emit('connection', ws, req));
+});
+server.listen(PORT, '0.0.0.0', () => console.log(`worms on :${PORT} — Jev ${JEV_BASE() ? 'via Sprites gateway' : JEV_KEY() ? 'via API key' : 'disabled'}, assets ${TIGRIS() ? 'from Tigris' : 'local'}`));

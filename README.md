@@ -16,6 +16,7 @@ No build step: plain ES modules on a Canvas 2D renderer, served by a small Node 
 ## Run it
 
 ```bash
+npm install               # ws, for online multiplayer
 node server.js            # http://localhost:8080
 ```
 
@@ -34,9 +35,14 @@ Add `?testmap` to the URL for the deterministic movement test course, and `?perf
 
 ## What's in it
 
-- **Destructible bitmap terrain** with procedural islands, caves and tunnels, baked lighting and drop shadows, and three themes (Rolling Hills, Red Planet, Frozen Wastes).
+- **Destructible bitmap terrain** with procedural islands, caves and tunnels, baked lighting and drop shadows, and four themes.
+- **Four worlds**: Rolling Hills, Red Planet, Frozen Wastes and Sand Dunes.
 - **23 weapons and utilities**, including bazooka, homing missile, grenade, cluster bomb, banana bomb, Holy Hand Grenade, shotgun, minigun, fire punch, baseball bat, dynamite, mines, sheep, air strike, Armageddon, Concrete Donkey, ninja rope, jet pack, teleport, girder, blowtorch, skip go and surrender.
 - **Turn rules from the original**: wind, retreat time, fall damage, drowning, crates on parachutes, oil drums, sudden death with rising water.
+- **Online multiplayer**: host a game, share the 6-letter code or `?join=CODE` link, and up to 4 players each take a team.
+  - The host's browser runs the authoritative simulation and streams snapshots about 30 times a second.
+  - Guests rebuild identical terrain from the shared seed and apply the host's crater events in order.
+  - If a guest drops, the CPU takes over their team.
 - **Opponents**:
   - The CPU brute-forces candidate shots with the game's own physics and then plays them with skill-based aiming error.
   - Jev picks among those simulated moves, and chooses a taunt, through the TypeSafe API.
@@ -55,7 +61,7 @@ Add `?testmap` to the URL for the deterministic movement test course, and `?perf
 
 ```
 index.html, css/, js/        the game (entry: js/main.js)
-server.js                    static server + Jev proxy + Tigris-backed assets + telemetry
+server.js                    static server, WebSocket room relay, Jev proxy, Tigris-backed assets, telemetry
 assets/gfx, assets/audio     game-ready art and sound
 tools/                       asset pipeline
   prep_images.py             cut out and resize generated sprites
@@ -75,6 +81,7 @@ docs/screenshots/            README images
 - Art generated with [image-use](https://github.com/leeguooooo/image-use) and upscaled with Real-ESRGAN.
 - Voices and sound effects by [ElevenLabs](https://elevenlabs.io).
 - Opponent decisions by [TypeSafe Jev](https://typesafe.ai).
+- Toast loaders ported from [loading.dev](https://loading.dev) (MIT); toast behaviour modelled on [Sonner](https://sonner.emilkowal.ski) with [shadcn/ui](https://ui.shadcn.com) styling.
 - The title-screen widgets are vanilla re-implementations inspired by [React Bits](https://reactbits.dev) (Elastic Slider, Tilted Card, Click Spark, Aurora) and [Rare UI](https://rareui.com) (Gooey Nav, Animated Counter).
 
 Worms and Worms Armageddon are trademarks of Team17. This is a non-commercial fan project and is not affiliated with Team17.

@@ -74,7 +74,17 @@
       </div>
 
       <div id="menuMain" class="hidden">
-        <section class="mSection"><h3 class="mHead">Game mode</h3><div id="modeCards" class="modeCards"></div></section>
+        <section class="mSection" id="onlineSec"><h3 class="mHead">Play online</h3>
+          <div class="onlineRow">
+            <input id="mpName" class="mpInput" maxlength="18" placeholder="Your name" autocomplete="nickname">
+            <button id="btnHost" class="mpBtn" type="button">Host a game</button>
+            <span class="mpOr">or</span>
+            <input id="mpCode" class="mpInput code" maxlength="6" placeholder="CODE" autocapitalize="characters" spellcheck="false">
+            <button id="btnJoin" class="mpBtn ghost" type="button">Join</button>
+          </div>
+          <div id="lobby" class="lobby hidden"></div>
+        </section>
+        <section class="mSection" id="modeSec"><h3 class="mHead">Game mode</h3><div id="modeCards" class="modeCards"></div></section>
         <section class="mSection"><h3 class="mHead">Battlefield</h3><div id="terrainCards" class="terrainCards"></div></section>
         <section class="mSection mSplit">
           <div><h3 class="mHead">Rules</h3><div id="sliderGrid" class="sliderGrid"></div></div>

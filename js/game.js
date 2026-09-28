@@ -72,11 +72,17 @@ class Camera {
 export class Game {
   constructor(opts, ui) {
     this.opts = opts; this.ui = ui;
-    const themeKey = opts.terrain === 'random' ? pick(Object.keys(THEMES)) : opts.terrain;
+    // online games pass a resolved theme, seed and map style so every client builds the same land
+    const themeKey = opts.terrain === 'random' || !THEMES[opts.terrain] ? pick(Object.keys(THEMES)) : opts.terrain;
+    this.themeKey = themeKey;
     this.theme = THEMES[themeKey];
     this.terrain = new Terrain(WORLD_W, WORLD_H);
+    this.seed = opts.seed ?? ((Math.random() * 1e9) | 0);
+    this.mapStyle = opts.mapStyle ?? (Math.random() < 0.35 ? 'islands' : 'island');
+    this.oid = 0;
+    this.mySeat = opts.mySeat ?? 0;
     if (opts.testmap) this.terrain.generateTest('grass');
-    else this.terrain.generate(themeKey, (Math.random() * 1e9) | 0, Math.random() < 0.35 ? 'islands' : 'island');
+    else this.terrain.generate(themeKey, this.seed, this.mapStyle);
     if (opts.testmap) this.theme = THEMES.grass;
     this.waterY = WORLD_H - 48;
     this.fx = new FX();
@@ -103,6 +109,16 @@ export class Game {
 
   _makeTeams() {
     const o = this.opts;
+    if (o.teams === 'online') {
+      // one team per connected player; "remote" = steered by someone else's keyboard
+      this.teams = o.seats.map((seat, i) => {
+        const d = { ...TEAM_DEFS[i] };
+        const ammo = {}; for (const w of WEAPONS) ammo[w.id] = w.ammo;
+        return { ...d, idx: i, cpu: false, brain: 'human', seat: seat.seat, player: seat.name, remote: seat.seat !== this.mySeat,
+          worms: [], ammo, wormIdx: -1, game: this, lastWeapon: 'bazooka', names: [...NAMES[i]] };
+      });
+      return;
+    }
     const layout = { '1v1cpu': [0, 1], '1v1': [0, 0], '1v3cpu': [0, 1, 1, 1], '4p': [0, 0, 0, 0], 'cpu2': [1, 1],
       '1v1jev': [0, 2], 'jevcpu': [2, 1], '1v2mix': [0, 2, 1] }[o.teams] || [0, 1];
     this.teams = layout.map((cpu, i) => {
@@ -161,7 +177,7 @@ export class Game {
     place(4, (x, y) => { const b = new Barrel(x, y - 3); return b; }, 60);
   }
 
-  add(o) { this.objects.push(o); return o; }
+  add(o) { o.id = ++this.oid; this.objects.push(o); return o; }
   later(t, fn) { this.timers.push({ t, fn }); }
 
   // ------------------------------------------------------------ helpers
@@ -169,7 +185,7 @@ export class Game {
   get cur() { return this.curWorm; }
   get curTeam() { return this.teams[this.teamIdx]; }
   get weapon() { return WEAPON_BY_ID[this.weaponId]; }
-  isHumanTurn() { return this.curTeam && !this.curTeam.cpu && this.state !== 'over'; }
+  isHumanTurn() { return this.curTeam && !this.curTeam.cpu && !this.curTeam.remote && this.state !== 'over'; }
   aliveTeams() { return this.teams.filter(t => !t.surrendered && t.worms.some(w => w.alive)); }
   teamHp(t) { return t.worms.reduce((s, w) => s + (w.dead ? 0 : Math.max(0, w.hp)), 0); }
 
@@ -365,6 +381,7 @@ export class Game {
   // ------------------------------------------------------------- firing
 
   selectWeapon(id) {
+    if (this.puppet) { if (this.isHumanTurn() && this.curTeam.ammo[id] > 0) { this.netSend({ t: 'cmd', k: 'weapon', v: id }); this.weaponId = id; this.ui.refreshWeapons(); return true; } return false; }
     const t = this.curTeam;
     if (!t || this.state !== 'turn' || this.charging) return false;
     if (!(t.ammo[id] > 0)) return false;
@@ -377,7 +394,10 @@ export class Game {
     return true;
   }
 
-  setFuse(n) { this.fuse = clamp(n, 1, 5); this.ui.refreshWeapons(); }
+  setFuse(n) {
+    this.fuse = clamp(n, 1, 5); this.ui.refreshWeapons();
+    if (this.puppet) this.netSend({ t: 'cmd', k: 'fuse', v: this.fuse });
+  }
 
   canFire() {
     const w = this.cur;
@@ -385,6 +405,7 @@ export class Game {
   }
 
   fire(extra = {}) {
+    if (this.puppet) { if (this.isHumanTurn()) this.netSend({ t: 'cmd', k: 'fire' }); return; }
     const w = this.cur, wp = this.weapon, t = this.curTeam;
     if (!this.canFire() || !(t.ammo[wp.id] > 0)) return;
     if (wp.needsTarget && !this.target && !extra.target) { this.ui.hint('Click to choose a target'); return; }
