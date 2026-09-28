@@ -187,7 +187,7 @@ export class NetGuest {
         case 'turn': {
           g.teamIdx = e[1]; g.curWorm = g.worms[e[2]];
           this.ui.turnStart(g.teams[e[1]], g.worms[e[2]]);
-          if (g.curTeam.seat === g.mySeat) toast.success('Your turn', { id: 'yourturn', description: `${g.curWorm.name} is up`, accent: g.curTeam.color, duration: 2200 });
+          if (g.curTeam.seat === g.mySeat) toast('Your turn', { id: 'yourturn', kind: 'turn', eyebrow: g.curTeam.name, tag: 'You', description: `${g.curWorm.name} is up`, accent: g.curTeam.color, duration: 2200 });
           g.cam.follow(g.curWorm);
           break;
         }

@@ -36,8 +36,8 @@ export class UIBridge {
 
   turnStart(team, worm) {
     toast.dismiss('ai');
-    const who = team.brain === 'jev' ? ' · Jev' : team.cpu ? ' · CPU' : team.player ? ` · ${team.player}` : '';
-    toast(team.name, { id: 'turn', description: `${worm.name}'s turn${who}`, accent: team.color, duration: 2400 });
+    const who = team.brain === 'jev' ? 'Jev' : team.cpu ? 'CPU' : team.player || '';
+    toast(`${worm.name}'s turn`, { id: 'turn', kind: 'turn', eyebrow: team.name, tag: who, accent: team.color, duration: 2400 });
     store.setState({ panelOpen: false });
     this.refreshTeams();
     this.refreshWeapons();

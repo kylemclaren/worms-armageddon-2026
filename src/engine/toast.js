@@ -16,7 +16,7 @@ export function toast(title, o = {}) {
     type,
     timeout,
     priority: type === 'error' ? 'high' : 'low',
-    data: { accent: o.accent, loader: o.loader },
+    data: { accent: o.accent, loader: o.loader, kind: o.kind, eyebrow: o.eyebrow, tag: o.tag },
   });
 }
 toast.success = (title, o = {}) => toast(title, { ...o, type: 'success' });

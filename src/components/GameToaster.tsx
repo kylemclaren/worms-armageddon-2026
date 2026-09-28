@@ -1,53 +1,80 @@
 import type React from 'react';
-import { CircleCheck, Info, OctagonX, TriangleAlert } from 'lucide-react';
+import { Check, Info, TriangleAlert, X } from 'lucide-react';
 import { Orbit, BouncingDots, Wave, Comet } from 'loading-dev';
 import {
-  Toast, ToastClose, ToastContent, ToastDescription, ToastPortal, ToastProvider, ToastTitle, ToastViewport,
+  Toast, ToastContent, ToastDescription, ToastPortal, ToastProvider, ToastTitle, ToastViewport,
   toast, useToastManager,
 } from '@/components/ui/toast';
+import { cn } from '@/lib/utils';
+import wormFace from '@/assets/worm-face.png';
 
-// shadcn Toast, anchored top-centre under the HUD bar (the stock viewport sits
-// bottom-right, where the weapon dock lives). Stacking overrides are in game.css.
-type GameToastData = { accent?: string; loader?: 'orbit' | 'dots' | 'wave' | 'comet' };
+// shadcn Toast restyled as a HUD capsule: anchored top-centre under the round/timer bar,
+// a status chip on the left (worm portrait for turns, loader while thinking), an optional
+// team eyebrow, and a hairline timer along the bottom. Layout and stacking live in game.css.
+type GameToastData = {
+  accent?: string;
+  loader?: 'orbit' | 'dots' | 'wave' | 'comet';
+  kind?: 'turn';
+  eyebrow?: string;
+  tag?: string;
+};
 const LOADERS = { orbit: Orbit, dots: BouncingDots, wave: Wave, comet: Comet };
+const TYPE_COLOR: Record<string, string> = {
+  success: '#34d399', error: '#f87171', info: '#7cc4ff', warning: '#fbbf24', loading: 'var(--primary)',
+};
 
-function Icon({ type, loader }: { type?: string; loader?: GameToastData['loader'] }) {
-  if (type === 'loading') {
-    const L = LOADERS[loader ?? 'orbit'] ?? Orbit;
-    return <L size={16} color="var(--primary)" />;
+function Chip({ type, data }: { type?: string; data?: GameToastData }) {
+  if (data?.kind === 'turn') {
+    return (
+      <span className="toast-chip toast-chip-face">
+        <img src={wormFace} alt="" draggable={false} />
+      </span>
+    );
   }
-  if (type === 'success') return <CircleCheck className="text-emerald-400" />;
-  if (type === 'info') return <Info className="text-sky-400" />;
-  if (type === 'warning') return <TriangleAlert className="text-amber-400" />;
-  if (type === 'error') return <OctagonX className="text-destructive" />;
-  return null;
+  if (type === 'loading') {
+    const L = LOADERS[data?.loader ?? 'orbit'] ?? Orbit;
+    return <span className="toast-chip"><L size={18} color={data?.accent || 'var(--primary)'} /></span>;
+  }
+  const Icon = type === 'success' ? Check : type === 'error' ? X : type === 'warning' ? TriangleAlert : type === 'info' ? Info : null;
+  if (!Icon) return null;
+  return <span className="toast-chip toast-chip-icon"><Icon strokeWidth={3} /></span>;
 }
 
 function GameToastList() {
   const { toasts } = useToastManager<GameToastData>();
-  return toasts.map(t => (
-    <Toast key={t.id} toast={t} swipeDirection="up" className="game-toast bg-popover/90 backdrop-blur-md"
-      data-testid={`toast-${t.id}`} data-accent={t.data?.accent ? '' : undefined}
-      style={t.data?.accent ? ({ '--toast-accent': t.data.accent } as React.CSSProperties) : undefined}>
-      <ToastContent className="gap-2.5 px-3.5 py-2.5">
-        {t.type && t.type !== 'default' && (
-          <span className="grid size-4 shrink-0 place-items-center [&_svg:not([class*='size-'])]:size-4"><Icon type={t.type} loader={t.data?.loader} /></span>
-        )}
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <ToastTitle className="font-semibold leading-tight" />
-          <ToastDescription className="text-xs leading-snug" />
-        </div>
-        <ToastClose className="size-6 opacity-60 hover:opacity-100" />
-      </ToastContent>
-    </Toast>
-  ));
+  return toasts.map(t => {
+    const d = t.data;
+    const tone = d?.accent || (t.type && TYPE_COLOR[t.type]) || 'rgb(255 255 255 / .5)';
+    const plain = !d?.kind && (!t.type || t.type === 'default');
+    return (
+      <Toast key={t.id} toast={t} swipeDirection="up" className="game-toast" data-testid={`toast-${t.id}`}
+        data-type={t.type} data-kind={d?.kind} data-plain={plain ? '' : undefined}
+        style={{ '--tone': tone, '--life': `${t.timeout ?? 0}ms` } as React.CSSProperties}>
+        <ToastContent className="toast-pill">
+          <Chip type={t.type} data={d} />
+          <div className="flex min-w-0 flex-col justify-center">
+            {d?.eyebrow && (
+              <span className="toast-eyebrow">
+                {d.eyebrow}{d.tag && <span className="toast-tag">{d.tag}</span>}
+              </span>
+            )}
+            <ToastTitle className="toast-title" />
+            <ToastDescription className="toast-desc" />
+          </div>
+          {t.type === 'loading'
+            ? <span className="toast-timer toast-timer-busy" />
+            : t.timeout ? <span key={t.updateKey} className="toast-timer" /> : null}
+        </ToastContent>
+      </Toast>
+    );
+  });
 }
 
 export function GameToaster() {
   return (
-    <ToastProvider toastManager={toast} limit={4}>
+    <ToastProvider toastManager={toast} limit={3}>
       <ToastPortal>
-        <ToastViewport className="game-toast-viewport">
+        <ToastViewport className={cn('game-toast-viewport')}>
           <GameToastList />
         </ToastViewport>
       </ToastPortal>

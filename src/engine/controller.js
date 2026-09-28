@@ -12,7 +12,7 @@ import { THEMES } from './terrain.js';
 import { store } from './store.js';
 import { UIBridge } from './bridge.js';
 
-export const BUILD = '2026-09-28 react-toast';
+export const BUILD = '2026-09-28 toast-v2';
 
 const $ = id => document.getElementById(id);
 let canvas, renderer;
@@ -402,5 +402,6 @@ Object.defineProperty(window, '__r', { get: () => renderer });
 window.__setPaused = setPaused;
 import { setOptions as _setOptions } from './store.js';
 window.__store = store;
+window.__toast = toast;
 window.__setOptions = _setOptions;
 window.__ctl = { start, backToMenu, hostOnline, joinOnline, leaveOnline, selectWeapon, togglePanel, setFuse, skipTurn };

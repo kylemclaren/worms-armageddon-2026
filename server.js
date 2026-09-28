@@ -86,22 +86,31 @@ async function jev(req, res) {
   try { payload = JSON.parse(body); } catch { return send(res, 400, { error: 'Bad JSON' }); }
   if (!payload || typeof payload.questions !== 'object' || payload.state === undefined) return send(res, 400, { error: 'Need state and questions' });
   const out = { state: payload.state, model: 'jev-latest', questions: payload.questions };
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 12000);
-  try {
-    const url = JEV_BASE() ? `${JEV_BASE().replace(/\/$/, '')}/v1/systemone` : 'https://api.typesafe.ai/v1/systemone';
-    const headers = { 'Content-Type': 'application/json' };
-    if (!JEV_BASE()) headers.Authorization = `Bearer ${JEV_KEY()}`;
-    const r = await fetch(url, {
-      method: 'POST', signal: ctl.signal, headers,
-      body: JSON.stringify(out),
-    });
-    const text = await r.text();
-    res.writeHead(r.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    res.end(text);
-  } catch (e) {
-    send(res, 502, { error: `Upstream error: ${e.name === 'AbortError' ? 'timeout' : e.message}` });
-  } finally { clearTimeout(timer); }
+  const url = JEV_BASE() ? `${JEV_BASE().replace(/\/$/, '')}/v1/systemone` : 'https://api.typesafe.ai/v1/systemone';
+  const headers = { 'Content-Type': 'application/json' };
+  if (!JEV_BASE()) headers.Authorization = `Bearer ${JEV_KEY()}`;
+  // The gateway occasionally answers with a plain-text proxy error ("upstream connect error ...").
+  // Retry once inside the client's 14 s budget and always hand the browser JSON.
+  const deadline = Date.now() + 13000;
+  let last = 'no response';
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const left = deadline - Date.now();
+    if (left < 1500) break;
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), attempt === 1 ? Math.min(7000, left) : left);
+    try {
+      const r = await fetch(url, { method: 'POST', signal: ctl.signal, headers, body: JSON.stringify(out) });
+      const text = await r.text();
+      let json = null;
+      try { json = JSON.parse(text); } catch {}
+      if (json && r.status < 500) return send(res, r.status, json);
+      last = `HTTP ${r.status}${json ? '' : `: ${text.replace(/\s+/g, ' ').slice(0, 80)}`}`;
+    } catch (e) {
+      last = e.name === 'AbortError' ? 'timeout' : e.message;
+    } finally { clearTimeout(timer); }
+    console.warn(`[jev] attempt ${attempt} failed: ${last}`);
+  }
+  send(res, 502, { error: last === 'timeout' ? 'Jev took too long to answer' : 'Jev\'s server hiccuped', detail: last });
 }
 
 function send(res, code, obj) {

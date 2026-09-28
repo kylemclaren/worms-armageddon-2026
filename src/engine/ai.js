@@ -386,11 +386,11 @@ export class AI {
     toast.loading('Jev is deciding', { id: 'jev', loader: 'orbit', description: `Weighing ${Object.keys(criteria).length} moves`, accent: team.color });
     const t0 = performance.now();
     const ctl = new AbortController();
-    const to = setTimeout(() => ctl.abort(), 9000);
+    const to = setTimeout(() => ctl.abort(), 14000);
     fetch('api/jev', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state, questions }), signal: ctl.signal })
-      .then(r => r.json().then(j => ({ ok: r.ok, j })))
+      .then(r => r.text().then(t => { let j = null; try { j = JSON.parse(t); } catch {} return { ok: r.ok && !!j, j: j || { error: `Jev's server hiccuped (HTTP ${r.status})` } }; }))
       .then(({ ok, j }) => {
-        if (!ok || !j.answers?.move) throw new Error(j.error || j.detail || 'bad response');
+        if (!ok || !j.answers?.move) throw new Error(j.error || (typeof j.detail === 'string' ? j.detail : 'unexpected answer'));
         const a = j.answers.move;
         const pick = byKey[a.choice];
         if (!pick) throw new Error('unknown choice');
@@ -404,7 +404,7 @@ export class AI {
       })
       .catch(e => {
         this.jevPick = null;
-        toast.error('Jev unavailable', { id: 'jev', description: `${e.name === 'AbortError' ? 'Timed out' : e.message}. The local CPU takes this turn.`, duration: 4500 });
+        toast.error('Jev unavailable', { id: 'jev', description: `${e.name === 'AbortError' ? 'Jev took too long' : e.message}. The local CPU plays this turn.`, duration: 4500 });
       })
       .finally(() => { clearTimeout(to); this.jevWaiting = false; });
   }

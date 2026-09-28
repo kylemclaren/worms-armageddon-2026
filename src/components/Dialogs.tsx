@@ -42,7 +42,7 @@ export function WeaponPanel() {
               if (first) ctl.selectWeapon(first);
             }} />
         </div>
-        <div className="grid max-h-[60vh] gap-3 overflow-y-auto pr-1">
+        <div className="-mx-1.5 grid max-h-[60vh] gap-3 overflow-y-auto px-1.5 pb-1.5 pt-1">
           {WEAPON_GROUPS.map(g => {
             const ids = g.ids.filter(match);
             if (!ids.length) return null;

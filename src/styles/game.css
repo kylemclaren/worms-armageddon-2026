@@ -34,31 +34,98 @@
 @keyframes pulse-low { to { transform: scale(1.08); } }
 @media (prefers-reduced-motion: reduce) { .menu-layer, .menu-aurora, .logo-float, .shine, .card-selected::after, .timer-low { animation: none; } }
 
-/* ---- shadcn Toast, re-anchored top-centre (stock viewport stacks bottom-right) ---- */
+/* ---- shadcn Toast as a HUD capsule (see GameToaster.tsx) ---- */
 .game-toast-viewport {
-  position: fixed; top: 78px; bottom: auto; left: 50%; right: auto;
-  width: min(360px, calc(100vw - 32px)); max-width: none; margin: 0; transform: translateX(-50%);
+  position: fixed; top: 84px; bottom: auto; left: 50%; right: auto;
+  width: min(440px, calc(100vw - 32px)); max-width: none; margin: 0; transform: translateX(-50%);
   z-index: 60;
 }
+/* the root is an invisible full-width rail; the visible capsule is centred inside it */
 [data-slot='toast'].game-toast {
   top: 0; bottom: auto; transform-origin: top center;
+  display: flex; justify-content: center; align-items: flex-start;
+  background: none; border: 0; box-shadow: none; border-radius: 0; pointer-events: none;
+  --peek: .45rem;
   --offset-y: calc(var(--toast-offset-y) + var(--toast-index) * var(--gap) + var(--toast-swipe-movement-y));
   transform: translateX(var(--toast-swipe-movement-x))
     translateY(calc(var(--toast-swipe-movement-y) + var(--toast-index) * var(--peek) + var(--shrink) * var(--height)))
     scale(var(--scale));
-  box-shadow: 0 12px 32px rgb(0 0 0 / .45), 0 0 0 1px rgb(255 255 255 / .06);
-}
-[data-slot='toast'].game-toast[data-accent] {
-  box-shadow: inset 3px 0 0 var(--toast-accent), 0 12px 32px rgb(0 0 0 / .45), 0 0 0 1px rgb(255 255 255 / .06);
+  transition: transform .45s cubic-bezier(.2, 1.25, .35, 1), opacity .3s ease, height .15s;
 }
 [data-slot='toast'].game-toast::after { top: auto; bottom: 100%; }
 [data-slot='toast'].game-toast[data-expanded] {
   transform: translateX(var(--toast-swipe-movement-x)) translateY(var(--offset-y));
 }
-[data-slot='toast'].game-toast[data-starting-style],
+[data-slot='toast'].game-toast[data-starting-style] { transform: translateY(-18px) scale(.86); opacity: 0; }
 [data-slot='toast'].game-toast[data-ending-style]:not([data-limited]):not([data-swipe-direction]) {
-  transform: translateY(-150%); opacity: 0;
+  transform: translateY(-10px) scale(.92); opacity: 0; transition-duration: .22s;
 }
 [data-slot='toast'].game-toast[data-ending-style][data-swipe-direction='up'] {
-  transform: translateY(calc(var(--toast-swipe-movement-y) - 150%)); opacity: 0;
+  transform: translateY(calc(var(--toast-swipe-movement-y) - 120%)); opacity: 0;
 }
+
+.toast-pill {
+  position: relative; pointer-events: auto; overflow: hidden;
+  display: inline-flex; align-items: center; gap: .7rem;
+  height: auto; min-height: 48px; max-width: 100%; padding: 6px 20px 6px 6px;
+  border-radius: 999px;
+  background:
+    radial-gradient(140px 70px at 0% 50%, color-mix(in oklab, var(--tone) 26%, transparent), transparent 70%),
+    linear-gradient(180deg, rgb(34 40 58 / .94), rgb(15 19 30 / .94));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--tone) 38%, rgb(255 255 255 / .08)),
+    inset 0 1px 0 rgb(255 255 255 / .10),
+    0 10px 28px -6px rgb(0 0 0 / .6), 0 2px 6px rgb(0 0 0 / .35);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
+.game-toast[data-plain] .toast-pill { min-height: 38px; padding: 6px 18px; }
+.game-toast[data-plain] .toast-title { font-size: 13px; }
+
+.toast-chip {
+  position: relative; flex: none; display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 999px;
+  background: color-mix(in oklab, var(--tone) 18%, rgb(8 11 18 / .8));
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--tone) 70%, transparent), 0 0 14px -2px color-mix(in oklab, var(--tone) 55%, transparent);
+}
+.toast-chip-icon { background: var(--tone); color: rgb(10 14 22); box-shadow: 0 0 14px -2px var(--tone); }
+.toast-chip-icon svg { width: 18px; height: 18px; }
+.toast-chip-face {
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, color-mix(in oklab, var(--tone) 55%, white 10%), color-mix(in oklab, var(--tone) 70%, black 35%));
+  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--tone) 80%, white 20%), 0 0 16px -2px var(--tone);
+}
+.toast-chip-face img { width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; transform: translateY(10%);
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / .35)); animation: toastBob 1.8s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes toastBob { 50% { transform: translateY(12%) rotate(-4deg); } }
+
+.toast-eyebrow {
+  display: flex; align-items: center; gap: .4rem; margin-bottom: 1px;
+  font-size: 10px; font-weight: 800; line-height: 1.1; letter-spacing: .16em; text-transform: uppercase;
+  color: color-mix(in oklab, var(--tone) 80%, white 20%); white-space: nowrap;
+}
+.toast-tag {
+  padding: 1px 5px; border-radius: 4px; font-size: 8.5px; letter-spacing: .12em;
+  background: color-mix(in oklab, var(--tone) 24%, transparent); color: rgb(255 255 255 / .9);
+}
+/* sans title by default (wraps to two lines); the chunky display face is kept for turn calls */
+.toast-title { font-size: 14px; font-weight: 700; line-height: 1.2; color: var(--foreground);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.game-toast[data-kind='turn'] .toast-title { font-family: var(--font-num); font-size: 15px; font-weight: 400; letter-spacing: .02em;
+  white-space: nowrap; display: block; text-overflow: ellipsis; }
+.toast-desc { font-size: 11.5px; line-height: 1.25; color: rgb(255 255 255 / .62); margin-top: 1px; }
+.toast-desc:empty { display: none; }
+
+.toast-timer {
+  position: absolute; left: 24px; right: 24px; bottom: 0; height: 1.5px; border-radius: 2px;
+  background: var(--tone); opacity: .7; transform-origin: left center;
+  animation: toastLife var(--life) linear forwards;
+}
+@keyframes toastLife { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.toast-timer-busy {
+  transform: none; opacity: 1; animation: toastBusy 1.2s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, var(--tone), transparent); background-size: 40% 100%; background-repeat: no-repeat;
+}
+@keyframes toastBusy { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+.game-toast-viewport:hover .toast-timer { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .toast-chip-face img, .toast-timer-busy { animation: none; } }
