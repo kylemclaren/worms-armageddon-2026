@@ -1,0 +1,21 @@
+/* Game render layers (owned by the engine). The UI on top is React + Tailwind. */
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0d14; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+#app { position: fixed; inset: 0; }
+canvas#game { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; cursor: crosshair; touch-action: none; outline: none; }
+#root { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+#root > * { pointer-events: auto; }
+#bgSky { position: absolute; left: -8%; top: -8%; width: 116%; height: 116%; background: #1b2a44 center/cover no-repeat; will-change: transform; z-index: 0; }
+.bgLayer { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; pointer-events: none; user-select: none; z-index: 0; display: none; max-width: none; }
+#bgFx { position: absolute; inset: 0; pointer-events: none; }
+.star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fff; animation: twinkle var(--d, 3s) ease-in-out infinite; animation-delay: var(--o, 0s); }
+@keyframes twinkle { 0%, 100% { opacity: .15; transform: scale(.6); } 50% { opacity: 1; transform: scale(1.15); } }
+.glow { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); animation: glowPulse 6s ease-in-out infinite; }
+@keyframes glowPulse { 0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(1); } 50% { opacity: .9; transform: translate(-50%, -50%) scale(1.08); } }
+.rays { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; opacity: .3;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 220, 150, .5) 0deg 4deg, rgba(255, 220, 150, 0) 4deg 14deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, transparent 70%); mask: radial-gradient(circle, #000 0%, transparent 70%);
+  animation: spin 120s linear infinite; }
+@keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+#vignette { position: absolute; inset: 0; pointer-events: none; z-index: 2; background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(10, 6, 20, .42) 100%); }
+#flashFx { position: absolute; inset: 0; pointer-events: none; z-index: 2; background: #ffbe6e; opacity: 0; display: none; }
+#perf { position: fixed; right: 10px; top: 70px; z-index: 60; margin: 0; padding: 8px 10px; background: rgba(0, 0, 0, .72); color: #9f9; font: 11px/1.35 ui-monospace, monospace; border-radius: 8px; pointer-events: none; display: none; }

@@ -1,0 +1,64 @@
+/* Effects the component library doesn't provide. */
+.menu-layer { position: absolute; inset: -4%; background: center/cover no-repeat; filter: blur(6px) saturate(1.1) brightness(.6);
+  opacity: 0; transition: opacity 1s ease; transform: scale(1.06); animation: mbDrift 40s ease-in-out infinite alternate; }
+.menu-layer.on { opacity: 1; }
+@keyframes mbDrift { to { transform: scale(1.12) translate(-1.5%, 1%); } }
+.menu-aurora { position: absolute; inset: -20%; opacity: .55; mix-blend-mode: screen;
+  background: radial-gradient(40% 30% at 20% 30%, rgba(120, 90, 255, .35), transparent 70%),
+    radial-gradient(35% 28% at 80% 25%, rgba(255, 140, 80, .32), transparent 70%),
+    radial-gradient(45% 35% at 50% 85%, rgba(60, 200, 220, .25), transparent 70%);
+  animation: aurora 18s ease-in-out infinite alternate; }
+@keyframes aurora { 50% { transform: translate(3%, -2%) rotate(3deg); } 100% { transform: translate(-3%, 2%) rotate(-2deg); } }
+.logo-float { animation: logoFloat 5s ease-in-out infinite; filter: drop-shadow(0 10px 22px rgba(0, 0, 0, .65)); }
+@keyframes logoFloat { 50% { transform: translateY(-6px) rotate(-.6deg); } }
+.shine { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, .55) 50%, transparent 65%);
+  transform: translateX(-120%); animation: shine 3.2s ease-in-out infinite; }
+@keyframes shine { 60%, 100% { transform: translateX(120%); } }
+/* selected card: a light sweeping round its border */
+@property --spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.card-selected::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px; pointer-events: none;
+  background: conic-gradient(from var(--spin), transparent 0 70%, oklch(0.84 0.16 84) 82%, transparent 92%);
+  -webkit-mask: linear-gradient(#000, #000) content-box exclude, linear-gradient(#000, #000); mask: linear-gradient(#000, #000) content-box exclude, linear-gradient(#000, #000);
+  animation: borderSpin 3.2s linear infinite; }
+@keyframes borderSpin { to { --spin: 360deg; } }
+/* rolling digits */
+.rn-slot { display: inline-block; height: 1.2em; overflow: hidden; vertical-align: bottom; }
+.rn-strip { display: flex; flex-direction: column; transition: transform .45s cubic-bezier(.2, 1.4, .3, 1); }
+.rn-strip span { height: 1.2em; line-height: 1.2em; }
+/* big centre announcement */
+.big-pop { animation: bigpop 2.1s cubic-bezier(.2, 1.5, .3, 1) forwards; }
+@keyframes bigpop { 0% { opacity: 0; transform: scale(.4) rotate(-6deg); } 14% { opacity: 1; transform: scale(1.1) rotate(2deg); }
+  24% { transform: scale(1) rotate(0); } 78% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: translateY(-6%) scale(.95); } }
+.text-stroke { -webkit-text-stroke: 3px #2a1c06; paint-order: stroke fill; }
+.timer-low { animation: pulse-low .5s ease-in-out infinite alternate; }
+@keyframes pulse-low { to { transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .menu-layer, .menu-aurora, .logo-float, .shine, .card-selected::after, .timer-low { animation: none; } }
+
+/* ---- shadcn Toast, re-anchored top-centre (stock viewport stacks bottom-right) ---- */
+.game-toast-viewport {
+  position: fixed; top: 78px; bottom: auto; left: 50%; right: auto;
+  width: min(360px, calc(100vw - 32px)); max-width: none; margin: 0; transform: translateX(-50%);
+  z-index: 60;
+}
+[data-slot='toast'].game-toast {
+  top: 0; bottom: auto; transform-origin: top center;
+  --offset-y: calc(var(--toast-offset-y) + var(--toast-index) * var(--gap) + var(--toast-swipe-movement-y));
+  transform: translateX(var(--toast-swipe-movement-x))
+    translateY(calc(var(--toast-swipe-movement-y) + var(--toast-index) * var(--peek) + var(--shrink) * var(--height)))
+    scale(var(--scale));
+  box-shadow: 0 12px 32px rgb(0 0 0 / .45), 0 0 0 1px rgb(255 255 255 / .06);
+}
+[data-slot='toast'].game-toast[data-accent] {
+  box-shadow: inset 3px 0 0 var(--toast-accent), 0 12px 32px rgb(0 0 0 / .45), 0 0 0 1px rgb(255 255 255 / .06);
+}
+[data-slot='toast'].game-toast::after { top: auto; bottom: 100%; }
+[data-slot='toast'].game-toast[data-expanded] {
+  transform: translateX(var(--toast-swipe-movement-x)) translateY(var(--offset-y));
+}
+[data-slot='toast'].game-toast[data-starting-style],
+[data-slot='toast'].game-toast[data-ending-style]:not([data-limited]):not([data-swipe-direction]) {
+  transform: translateY(-150%); opacity: 0;
+}
+[data-slot='toast'].game-toast[data-ending-style][data-swipe-direction='up'] {
+  transform: translateY(calc(var(--toast-swipe-movement-y) - 150%)); opacity: 0;
+}

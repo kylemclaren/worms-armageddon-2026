@@ -54,7 +54,7 @@ Add `?testmap` to the URL for the deterministic movement test course, and `?perf
   - `?testmap` gives a measurable test course.
 - **Sea life**: fish, turtles, jellyfish and a whale, per theme. They leap out of open water, spout, and scatter from explosions.
 - **Layered parallax backdrops** with depth-of-field, composited by the GPU, plus an adaptive graphics tier (Auto/High/Medium/Low).
-- **Title screen**: live blurred level backdrop, tilted mode and battlefield cards, elastic sliders with rolling digits, gooey segmented pickers and a click-spark start button.
+- **Title screen**: live blurred level backdrop, tilted mode and battlefield cards, Wake Slider rule bars with rolling digits, segmented pickers and a click-spark start button, all on React + shadcn/ui.
 - **Audio** from ElevenLabs: 40 sound effects, three worm voice banks and an announcer.
 
 ## Layout
@@ -81,7 +81,7 @@ docs/screenshots/            README images
 - Art generated with [image-use](https://github.com/leeguooooo/image-use) and upscaled with Real-ESRGAN.
 - Voices and sound effects by [ElevenLabs](https://elevenlabs.io).
 - Opponent decisions by [TypeSafe Jev](https://typesafe.ai).
-- Toast loaders ported from [loading.dev](https://loading.dev) (MIT); toast behaviour modelled on [Sonner](https://sonner.emilkowal.ski) with [shadcn/ui](https://ui.shadcn.com) styling.
-- The title-screen widgets are vanilla re-implementations inspired by [React Bits](https://reactbits.dev) (Elastic Slider, Tilted Card, Click Spark, Aurora) and [Rare UI](https://rareui.com) (Gooey Nav, Animated Counter).
+- Toasts are the [shadcn/ui Toast](https://ui.shadcn.com/docs/components/base/toast) (Base UI), with loaders from [loading.dev](https://loading.dev) (MIT).
+- Menu sliders are the [React Bits Wake Slider](https://reactbits.dev/micro/wake-slider) (MIT + Commons Clause). The other title-screen effects are inspired by [React Bits](https://reactbits.dev) (Tilted Card, Click Spark, Aurora) and [Rare UI](https://rareui.com) (Animated Counter).
 
 Worms and Worms Armageddon are trademarks of Team17. This is a non-commercial fan project and is not affiliated with Team17.

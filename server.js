@@ -49,32 +49,23 @@ async function fromTigris(key) {
   return inflight.get(key);
 }
 
-// Cache busting: every JS/CSS URL carries a hash of its contents, and an import map
-// rewrites the modules' own relative imports, so a browser can never mix stale code
-// with new code (the first version was served without cache headers and browsers
-// kept those files on heuristic freshness).
+// The UI is a Vite build in dist/ (content-hashed files under /static). We only inject
+// the asset version so replaced game art at the same /assets path is never stale.
+const DIST = path.join(ROOT, 'dist');
 function versionedIndex() {
-  const hash = f => crypto.createHash('sha1').update(fs.readFileSync(path.join(ROOT, f))).digest('hex').slice(0, 10);
-  const mods = fs.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js'));
-  const imports = Object.fromEntries(mods.map(f => [`/js/${f}`, `/js/${f}?v=${hash('js/' + f)}`]));
-  // asset version: changes whenever any served art/audio file changes, so replaced
-  // sprites at the same path are never read from a stale browser cache
   const h = crypto.createHash('sha1');
   for (const dir of ['assets/gfx', 'assets/audio/sfx']) for (const f of fs.readdirSync(path.join(ROOT, dir)).sort()) {
     const st = fs.statSync(path.join(ROOT, dir, f)); h.update(`${f}:${st.size}:${st.mtimeMs};`);
   }
   const assetV = h.digest('hex').slice(0, 10);
-  let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  html = html.replace('<head>', `<head>\n<script>window.ASSET_V = '${assetV}';</script>`);
-  html = html.replace('href="css/style.css"', `href="/css/style.css?v=${hash('css/style.css')}"`);
-  html = html.replace('<script type="module" src="js/main.js"></script>',
-    `<script type="importmap">${JSON.stringify({ imports })}</script>\n<script type="module" src="${imports['/js/main.js']}"></script>`);
-  return html;
+  const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
+  return html.replace('<head>', `<head>\n<script>window.ASSET_V = '${assetV}';</script>`);
 }
 
-const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/css\/[\w.-]+\.css$/, /^\/js\/[\w.-]+\.js$/,
+const PUBLIC = [/^\/$/, /^\/index\.html$/, /^\/static\/[\w.-]+\.(js|css|woff2?|png|svg|map)$/,
   /^\/assets\/gfx\/[\w.-]+\.(png|jpg|webp|json)$/, /^\/assets\/audio\/(sfx|voice\/\w+)\/[\w.-]+\.mp3$/];
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.woff2': 'font/woff2', '.woff': 'font/woff', '.svg': 'image/svg+xml', '.map': 'application/json',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.json': 'application/json' };
 
 // crude per-IP limiter for the proxy: 40 requests / minute
@@ -206,7 +197,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store, max-age=0', 'Content-Length': Buffer.byteLength(html) });
     return res.end(req.method === 'HEAD' ? undefined : html);
   }
-  let file = path.join(ROOT, p === '/' ? 'index.html' : p);
+  let file = p.startsWith('/static/') ? path.join(DIST, p) : path.join(ROOT, p);
   let source = 'local';
   if (TIGRIS() && p.startsWith('/assets/')) {
     try { const t = await fromTigris(p.slice(1)); file = t.file; source = t.source; }
@@ -217,7 +208,7 @@ const server = http.createServer(async (req, res) => {
     const ext = path.extname(file);
     const immutable = ext === '.mp3' || ext === '.png' || ext === '.jpg' || ext === '.webp';
     res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Content-Length': st.size,
-      'Cache-Control': immutable ? 'public, max-age=3600' : url.search ? 'public, max-age=31536000, immutable' : 'no-store, max-age=0',
+      'Cache-Control': p.startsWith('/static/') || url.search ? 'public, max-age=31536000, immutable' : immutable ? 'public, max-age=3600' : 'no-store, max-age=0',
       'X-Asset-Source': source });
     if (req.method === 'HEAD') return res.end();
     fs.createReadStream(file).pipe(res);
