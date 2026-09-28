@@ -241,12 +241,13 @@ export function buildMenu({ skyUrl, iconUrl, jevEnabled }) {
     { v: 'cpu2', title: 'Watch CPU', sub: 'CPU vs CPU', icons: ic('icon_sheep') },
   ], 'modeCard');
 
-  const skies = { grass: skyUrl('grass'), mars: skyUrl('mars'), snow: skyUrl('snow') };
+  const skies = { grass: skyUrl('grass'), mars: skyUrl('mars'), snow: skyUrl('snow'), desert: skyUrl('desert') };
   cardPicker($('terrainCards'), 'optTerrain', [
     { v: 'grass', title: 'Rolling Hills', art: `background-image:url('${skies.grass}')` },
     { v: 'mars', title: 'Red Planet', art: `background-image:url('${skies.mars}')` },
     { v: 'snow', title: 'Frozen Wastes', art: `background-image:url('${skies.snow}')` },
-    { v: 'random', title: 'Surprise me', art: `background-image:url('${skies.grass}'),url('${skies.mars}'),url('${skies.snow}');background-size:34% 100%,34% 100%,34% 100%;background-position:0 0,50% 0,100% 0;background-repeat:no-repeat` },
+    { v: 'desert', title: 'Sand Dunes', art: `background-image:url('${skies.desert}')` },
+    { v: 'random', title: 'Surprise me', art: `background-image:url('${skies.grass}'),url('${skies.mars}'),url('${skies.snow}'),url('${skies.desert}');background-size:26% 100%,26% 100%,26% 100%,26% 100%;background-position:0 0,33% 0,66% 0,100% 0;background-repeat:no-repeat` },
   ], 'terrainCard');
 
   const sl = $('sliderGrid');

@@ -283,7 +283,8 @@ export class Renderer {
     c.save();
     for (const f of g.flakes) {
       f.x += (g.wind * 140 + (kind === 'snow' ? 6 : 0)) * f.s * dt;
-      f.y += (kind === 'snow' ? 26 : kind === 'dust' ? 6 : 14) * f.s * dt;
+      f.y += (kind === 'snow' ? 26 : kind === 'dust' ? 6 : kind === 'sand' ? 4 : 14) * f.s * dt;
+      if (kind === 'sand') f.x += (g.wind * 160 + 30) * f.s * dt;          // blown sand streams along
       f.p += dt * 2;
       if (f.y > g.waterY) f.y = -20;
       if (f.x > WORLD_W + 400) f.x -= WORLD_W + 800;
@@ -291,6 +292,7 @@ export class Renderer {
       const x = f.x + Math.sin(f.p) * 6;
       if (kind === 'snow') { c.fillStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.arc(x, f.y, 1.6 * f.s + 0.6, 0, TAU); c.fill(); }
       else if (kind === 'dust') { c.fillStyle = 'rgba(180,255,230,.5)'; c.fillRect(x, f.y, 2 * f.s, 2 * f.s); }
+      else if (kind === 'sand') { c.fillStyle = 'rgba(255,220,160,.55)'; c.fillRect(x, f.y, 2.2 * f.s, 1.2 * f.s); }
       else {
         c.fillStyle = f.s > 0.9 ? '#e0a040' : '#7ab648';
         c.save(); c.translate(x, f.y); c.rotate(f.p);

@@ -10,11 +10,12 @@ const CAST = {
   grass: [['fish_orange', 4], ['fish_blue', 4], ['fish_yellow', 3], ['turtle', 1], ['whale', 1]],
   mars:  [['alienfish', 6], ['jellyfish', 4]],
   snow:  [['fish_blue', 5], ['jellyfish', 2], ['whale', 1], ['fish_yellow', 2]],
+  desert: [['fish_yellow', 4], ['fish_orange', 3], ['crab', 3], ['turtle', 1]],
 };
 const SPEC = {   // size (world px, height), swim speed, can leap
   fish_orange: { h: 13, v: [26, 48], leap: true }, fish_blue: { h: 12, v: [34, 58], leap: true },
   fish_yellow: { h: 13, v: [20, 36], leap: true }, alienfish: { h: 14, v: [24, 44], leap: true },
-  turtle: { h: 20, v: [14, 22] }, jellyfish: { h: 20, v: [4, 10], drift: true }, whale: { h: 40, v: [12, 18], spout: true },
+  turtle: { h: 20, v: [14, 22] }, crab: { h: 12, v: [8, 14], floor: true }, jellyfish: { h: 20, v: [4, 10], drift: true }, whale: { h: 40, v: [12, 18], spout: true },
 };
 
 export class Marine {
@@ -32,7 +33,7 @@ export class Marine {
   _spawn(kind) {
     const s = SPEC[kind];
     const dir = Math.random() < 0.5 ? 1 : -1;
-    return { kind, s, x: rand(-100, this.W + 100), depth: kind === 'whale' ? rand(26, 34) : rand(9, 38),
+    return { kind, s, x: rand(-100, this.W + 100), depth: kind === 'whale' ? rand(26, 34) : s.floor ? rand(34, 40) : rand(9, 38),
       dir, v: rand(s.v[0], s.v[1]), ph: rand(TAU), flee: 0, air: null, turn: 0, spoutT: rand(8, 20) };
   }
 

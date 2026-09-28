@@ -6,6 +6,7 @@
 <title>Worms Armageddon</title>
 <link rel="icon" href="assets/gfx/icon_grenade.png">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/loaders.css">
 </head>
 <body>
 
@@ -49,10 +50,10 @@
     <div id="bigMsg"></div>
 
     <div id="btnRow">
-      <button id="btnWeapons" title="Weapons (Tab)">⚔</button>
-      <button id="btnSkip" title="Skip go (Backspace)">⏭</button>
-      <button id="btnSound" title="Mute (M)">🔊</button>
-      <button id="btnHelp" title="Controls (H)">?</button>
+      <button id="btnWeapons" title="Weapons (Tab)" aria-label="Weapons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5M5 14l4 4M7 17l-3 3M3 19l2 2"/></svg></button>
+      <button id="btnSkip" title="Skip go" aria-label="Skip go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 4 10 8-10 8V4zM19 5v14"/></svg></button>
+      <button id="btnSound" title="Mute (M)" aria-label="Mute"></button>
+      <button id="btnHelp" title="Controls (H)" aria-label="Controls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></button>
     </div>
   </div>
 
@@ -85,6 +86,7 @@
               <option value="grass">Rolling Hills</option>
               <option value="mars">Red Planet</option>
               <option value="snow">Frozen Wastes</option>
+              <option value="desert">Sand Dunes</option>
               <option value="random">Random</option>
             </select>
           </label>

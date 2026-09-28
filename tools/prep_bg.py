@@ -43,7 +43,7 @@ def key_chroma(im):
 
 # Atmospheric perspective: distant planes lean toward the sky colour, soften and dim,
 # so the playable terrain always reads as the sharpest, most saturated thing on screen.
-HAZE = {"grass": (255, 186, 150), "mars": (110, 86, 170), "snow": (140, 170, 225)}
+HAZE = {"grass": (255, 186, 150), "mars": (110, 86, 170), "snow": (140, 170, 225), "desert": (255, 196, 150)}
 # Depth of field: everything behind the play area is softly out of focus, so the
 # eye stays on the (sharp) terrain and worms. Blur radii are at the 3072px source.
 DEPTH = {"far": dict(mix=0.42, blur=4.2, bright=0.92), "mid": dict(mix=0.26, blur=2.8, bright=0.8)}
@@ -62,7 +62,7 @@ def atmos(img, t, layer):
     return out.filter(ImageFilter.GaussianBlur(p["blur"]))
 
 
-for t in ("grass", "mars", "snow"):
+for t in [a for a in sys.argv[1:] if not a.startswith("-")] or ("grass", "mars", "snow", "desert"):
     for layer in ("sky", "far", "mid"):
         name = f"bg_{t}_{layer}"
         src = os.path.join(SRC, name + ".png")

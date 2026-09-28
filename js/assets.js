@@ -9,7 +9,8 @@ export const images = {};
 
 const SPRITES = ['logo', 'parachute', 'tombstone', 'oildrum', 'crate_weapon', 'crate_health', 'crate_utility',
   'prop_tree', 'prop_rock', 'prop_crystal', 'prop_snowman',
-  'fish_orange', 'fish_blue', 'fish_yellow', 'jellyfish', 'turtle', 'alienfish', 'whale'];
+  'fish_orange', 'fish_blue', 'fish_yellow', 'jellyfish', 'turtle', 'alienfish', 'whale',
+  'prop_cactus', 'prop_palm', 'prop_bones', 'prop_obelisk', 'crab'];
 const ICONS = ['bazooka', 'homing', 'grenade', 'cluster', 'banana', 'hhg', 'shotgun', 'minigun', 'firepunch', 'bat',
   'dynamite', 'mine', 'sheep', 'airstrike', 'armageddon', 'donkey', 'rope', 'jetpack', 'teleport', 'girder',
   'blowtorch', 'skipgo', 'surrender'];
@@ -18,8 +19,8 @@ const MANIFEST = [
   ['worm', 'worm_base.png'],
   ...SPRITES.map(n => [n, n + '.png']),
   ...ICONS.map(n => [`icon_${n}`, `icon_${n}.png`]),
-  ...['tex_grass', 'tex_mars', 'tex_snow'].map(n => [n, n + '.jpg']),
-  ...['grass', 'mars', 'snow'].flatMap(t => ['sky', 'far', 'mid'].map(l => [`bg_${t}_${l}`, `bg_${t}_${l}.webp`])),
+  ...['tex_grass', 'tex_mars', 'tex_snow', 'tex_desert'].map(n => [n, n + '.jpg']),
+  ...['grass', 'mars', 'snow', 'desert'].flatMap(t => ['sky', 'far', 'mid'].map(l => [`bg_${t}_${l}`, `bg_${t}_${l}.webp`])),
 ];
 
 function loadImage(src) {

@@ -611,39 +611,82 @@ export class Crate {
 // ============================================================ SHEEP
 
 export class Sheep {
+  // W:A-style sheep: bounds continuously, big leap at walls, turns round when stuck,
+  // blows up on command (or when its fuse runs out).
   constructor(owner, x, y, dir) {
-    Object.assign(this, { type: 'sheep', owner, x, y, vx: dir * 40, vy: -120, r: 7, bounce: 0.2, friction: 0.6,
-      dir, t: 0, life: 14, rest: false, hopT: rand(0.6, 1.4), blocked: 0 });
+    Object.assign(this, { type: 'sheep', owner, x, y, vx: dir * 60, vy: -160, r: 9, bounce: 0.05, friction: 0.85,
+      dir, t: 0, life: 16, rest: false, blocked: 0, groundT: 0, squash: 0, baaT: rand(1, 2.5) });
   }
   busy() { return !this.dead; }
   update(g, dt) {
     if (this.dead) return;
     this.t += dt;
+    if (this.squash > 0) this.squash = Math.max(0, this.squash - dt * 5);
     if (this.t > this.life) return this.boom(g);
+    const T = g.terrain;
     if (this.rest) {
-      // walk
-      const T = g.terrain;
-      const nx = this.x + this.dir * 70 * dt;
-      let ny = this.y, k = 0;
-      while (T.hitCircle(nx, ny, this.r) && k < 5) { ny--; k++; }
-      if (T.hitCircle(nx, ny, this.r)) { this.hop(g, 1.25); this.blocked++; if (this.blocked > 5) { this.dir *= -1; this.blocked = 0; } }
-      else { this.x = nx; this.y = ny; if (!T.hitCircle(this.x, this.y + 2, this.r)) this.rest = false; }
-      this.hopT -= dt;
-      if (this.hopT <= 0) this.hop(g, 1);
-    } else stepBody(g, this, dt);
-    if (this.y > g.waterY) { this.dead = true; g.fx.splash(this.x, g.waterY); sound.at('splash', this.x, g.cam); }
+      // a beat on the ground (squash), then spring off again
+      this.groundT += dt;
+      if (this.groundT > 0.07) {
+        // only something taller than a normal bound clears (~28px) counts as a wall;
+        // ordinary slopes are just bounded up
+        const wall = T.hitCircle(this.x + this.dir * 11, this.y - 20, this.r - 3);
+        if (wall) {
+          this.blocked++;
+          if (this.blocked > 3) { this.dir *= -1; this.blocked = 0; this._bound(g, -170, 70); }
+          else { this.x -= this.dir * 3; this._bound(g, -340, 22); }   // step back, leap nearly straight up
+        } else { this.blocked = Math.max(0, this.blocked - 0.25); this._bound(g, -175, 105); }
+      }
+    } else {
+      const hit = stepBody(g, this, dt);
+      if (hit && hit.speed > 40) this.squash = Math.min(1, hit.speed / 260);
+      if (this.rest) { this.groundT = 0; this.squash = Math.max(this.squash, 0.6); }
+      // don't let a slope turn the bound into a slide
+      if (this.rest && Math.abs(this.vx) > 0) this.vx = 0;
+    }
+    if ((this.baaT -= dt) <= 0) { this.baaT = rand(1.6, 3.4); sound.at('sheep', this.x, g.cam, { vol: 0.55, rate: rand(0.95, 1.25) }); }
+    if (this.y > g.waterY) {
+      this.dead = true; g.fx.splash(this.x, g.waterY, 1.1);
+      sound.at('splash', this.x, g.cam); sound.at('sheep', this.x, g.cam, { vol: 0.8, rate: 0.7 });
+    }
+    if (this.x < -150 || this.x > g.terrain.w + 150) this.dead = true;
   }
-  hop(g, k) {
-    this.rest = false; this.vy = -250 * k; this.vx = this.dir * 110; this.hopT = rand(0.8, 1.8); this.y -= 1;
-    if (Math.random() < 0.35) sound.at('sheep', this.x, g.cam, { vol: 0.7, rate: rand(0.9, 1.2) });
+  _bound(g, vy, vx) {
+    this.rest = false; this.groundT = 0;
+    this.vy = vy; this.vx = this.dir * vx; this.y -= 1;
+    this.squash = 0;
   }
   boom(g) {
     if (this.dead) return;
     this.dead = true;
-    g.explode(this.x, this.y, 72, 75, { by: this.owner });
-    g.fx.debris(this.x, this.y, 20, ['#ffffff', '#f0f0f0', '#dddddd']);
+    g.explode(this.x, this.y, 76, 75, { by: this.owner, sfx: 'explosion_big' });
+    g.fx.debris(this.x, this.y, 34, ['#ffffff', '#f4f1ea', '#e6e1d6', '#fdfbf6']);
+    for (let i = 0; i < 10; i++) g.fx.add({ k: 'smoke', x: this.x + rand(-10, 10), y: this.y + rand(-8, 8), vx: rand(-60, 60), vy: -rand(20, 70),
+      r: rand(5, 9), life: rand(0.8, 1.4), t: 0, drag: 1.4, grow: 10, light: true });
   }
-  draw(c) { if (!this.dead) drawSprite(c, images.icon_sheep, this.x, this.y - 3, 20, 0, this.dir < 0); }
+  draw(c) {
+    if (this.dead) return;
+    const img = images.icon_sheep;
+    if (!img) return;
+    const H = 29, W = img.width * (H / img.height);
+    // squash on landing, stretch in the air, tilt along the arc
+    const air = !this.rest;
+    const stretch = air ? Math.min(0.14, Math.abs(this.vy) / 1600) : 0;
+    const sy = 1 - this.squash * 0.28 + stretch, sx = 1 + this.squash * 0.22 - stretch * 0.6;
+    const tilt = air ? Math.atan2(this.vy, Math.abs(this.vx) + 80) * 0.35 * this.dir : 0;
+    const src = crispImage(img, W * PX * sx, H * PX * sy);
+    c.save();
+    c.translate(this.x, this.y + this.r);             // pivot at the hooves
+    c.rotate(tilt);
+    c.scale(this.dir * sx, sy);
+    c.drawImage(src, -W / 2, -H + 2, W, H);
+    c.restore();
+    // blinking fuse spark so the player knows it's live
+    if ((this.t * 8 | 0) % 2 === 0) {
+      c.fillStyle = '#ffd23f';
+      c.beginPath(); c.arc(this.x - this.dir * 6, this.y - H + this.r + 2, 1.8, 0, TAU); c.fill();
+    }
+  }
 }
 
 // ============================================================ BIG STUFF

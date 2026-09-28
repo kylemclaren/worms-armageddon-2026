@@ -7,9 +7,13 @@ import { UI } from './ui.js';
 import { WEAPONS } from './weapons.js';
 import { images } from './assets.js';
 import { buildMenu } from './menu.js';
+import { toast } from './toast.js';
+
+const VOL_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
+const VOL_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5zM22 9l-6 6M16 9l6 6"/></svg>';
 
 const $ = id => document.getElementById(id);
-export const BUILD = '2026-09-28 menu-v2';
+export const BUILD = '2026-09-28 desert-toasts';
 
 // ---- telemetry: real frame timings from the player's machine, sent to our own server
 function gpuName() {
@@ -97,7 +101,8 @@ $('btnAgain').onclick = () => {
 };
 $('btnWeapons').onclick = () => ui.togglePanel();
 $('btnSkip').onclick = () => { if (game?.isHumanTurn() && game.state === 'turn') { game.selectWeapon('skipgo'); game.fire(); } };
-$('btnSound').onclick = () => { $('btnSound').textContent = sound.toggleMute() ? '🔇' : '🔊'; };
+$('btnSound').innerHTML = VOL_ON;
+$('btnSound').onclick = () => { $('btnSound').innerHTML = sound.toggleMute() ? VOL_OFF : VOL_ON; };
 $('btnHelp').onclick = () => $('help').classList.toggle('hidden');
 $('btnCloseHelp').onclick = () => $('help').classList.add('hidden');
 $('btnResume').onclick = () => setPaused(false);
@@ -305,7 +310,7 @@ function autoQuality(dt) {
   if (fps < 48 && i < TIERS.length - 1) {
     renderer.setQuality(TIERS[i + 1]);
     gfx.grace = 1.5;
-    ui.hint(`Graphics lowered to ${TIERS[i + 1]} for smoother play (${fps.toFixed(0)} fps) — change in the menu`, 4);
+    toast.info(`Graphics lowered to ${TIERS[i + 1]}`, { description: `Running at ${fps.toFixed(0)} fps. You can change this in the menu.`, duration: 5000 });
   }
 }
 

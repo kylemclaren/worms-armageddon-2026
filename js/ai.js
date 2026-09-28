@@ -6,6 +6,7 @@
 import { stepBody } from './entities.js';
 import { MAX_SPEED } from './weapons.js';
 import { rand, clamp } from './util.js';
+import { toast } from './toast.js';
 
 const SKILL = {
   beginner: { angErr: 0.075, powErr: 0.07, budget: 0.45, think: 1.2 },
@@ -29,6 +30,7 @@ export class AI {
   begin(worm) {
     this.w = worm;
     this.jevAsked = false; this.jevWaiting = false; this.jevPick = null;
+    if (worm.team.brain !== 'jev') toast.loading('CPU is thinking', { id: 'ai', loader: 'dots', description: `${worm.team.name} · ${worm.name}`, accent: worm.team.color });
     this.phase = 'think';
     this.t = 0;
     this.best = null;
@@ -381,7 +383,7 @@ export class AI {
           comeonthen: 'Taunting a nearby enemy', uhoh: 'Nervous about a risky or weak move' } },
     };
     this.jevWaiting = true;
-    this.g.ui.hint('🧠 Jev is deciding…', 6);
+    toast.loading('Jev is deciding', { id: 'jev', loader: 'orbit', description: `Weighing ${Object.keys(criteria).length} moves`, accent: team.color });
     const t0 = performance.now();
     const ctl = new AbortController();
     const to = setTimeout(() => ctl.abort(), 9000);
@@ -395,19 +397,20 @@ export class AI {
         this.jevPick = pick.kind === 'skip' ? (pick.pass ? { kind: 'skip', forceSkip: true } : { kind: 'skip' }) : pick;
         const ms = Math.round(performance.now() - t0);
         const label = pick.kind === 'skip' ? criteria[a.choice].split('.')[0] : `${WNAME[pick.weapon]?.split(' (')[0] || pick.weapon} → ${pick.victim || 'enemy'}`;
-        this.g.ui.hint(`🧠 Jev: ${label}  ·  ${Math.round((a.confidence ?? 0) * 100)}% sure  ·  ${ms} ms`, 4);
+        toast.success(`Jev: ${label}`, { id: 'jev', description: `${Math.round((a.confidence ?? 0) * 100)}% confident · ${ms} ms`, accent: team.color, duration: 3800 });
         this.g.jevLog = { choice: a.choice, confidence: a.confidence, probabilities: a.probabilities, ms, options: criteria };
         const taunt = j.answers.taunt?.choice;
         if (taunt && Math.random() < 0.8) this.g.later(0.2, () => this.g.voice(me, taunt, true));
       })
       .catch(e => {
         this.jevPick = null;
-        this.g.ui.hint(`Jev unavailable (${e.name === 'AbortError' ? 'timeout' : e.message}) — local brain takes over`, 4);
+        toast.error('Jev unavailable', { id: 'jev', description: `${e.name === 'AbortError' ? 'Timed out' : e.message}. The local CPU takes this turn.`, duration: 4500 });
       })
       .finally(() => { clearTimeout(to); this.jevWaiting = false; });
   }
 
   _prepare(b) {
+    toast.dismiss('ai');
     const sk = this.skill;
     const plan = { ...b };
     if (plan.ang !== undefined) plan.ang += rand(-sk.angErr, sk.angErr) * (plan.weapon === 'shotgun' ? 0.4 : 1);

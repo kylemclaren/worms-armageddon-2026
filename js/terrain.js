@@ -7,6 +7,14 @@ import { Noise, clamp, lerp, TAU } from './util.js';
 import { images } from './assets.js';
 
 export const THEMES = {
+  desert: {
+    name: 'Sand Dunes', tex: 'tex_desert', sky: 'bg_desert_sky', far: 'bg_desert_far', mid: 'bg_desert_mid',
+    sun: { x: 0.53, y: 0.8, r: 0.2, col: '255,210,140', rays: true }, grad: ['#5a2f5e', '#e0784a', '#ffd08a'],
+    top: [240, 204, 132], topDark: [206, 150, 78], char: '#3a2410',
+    water: ['#62dcd0', '#22a2b2', '#0e4d62'], foam: '#f2fffb',
+    props: ['prop_cactus', 'prop_cactus', 'prop_palm', 'prop_bones', 'prop_obelisk'], flake: 'sand', haze: '255,200,150',
+    dunes: true,
+  },
   grass: {
     name: 'Rolling Hills', tex: 'tex_grass', sky: 'bg_grass_sky', far: 'bg_grass_far', mid: 'bg_grass_mid',
     sun: { x: 0.52, y: 0.85, r: 0.22, col: '255,200,120', rays: true }, grad: ['#3b2a6b', '#d9735c', '#ffc98a'],
@@ -168,14 +176,22 @@ export class Terrain {
 
     const base = h * N.range(0.4, 0.5);
     const amp = h * N.range(0.14, 0.22);
-    const caveAmt = N.range(0.6, 1.0);
+    const caveAmt = theme.dunes ? N.range(0.25, 0.45) : N.range(0.6, 1.0);
     const edge = N.range(330, 430);
     // Valleys that run all the way down to the sea split the land into islands.
     const dips = [];
     const nd = style === 'islands' ? N.int(1, 2) : N.chance(0.45) ? 1 : 0;
     for (let i = 0; i < nd; i++) dips.push({ x: w * (nd === 1 ? N.range(0.4, 0.6) : (i ? N.range(0.6, 0.72) : N.range(0.28, 0.4))), wd: N.range(110, 190) });
+    // Dunes: asymmetric waves (long windward slope, short steep slip face), smoothed
+    const period = N.range(300, 420), duneAmp = N.range(70, 110);
+    const dune = x => {
+      const t = ((x / period) % 1 + 1) % 1, u = t < 0.72 ? t / 0.72 : 1 - (t - 0.72) / 0.28;
+      return -(u * u * (3 - 2 * u)) * duneAmp;
+    };
     const surfAt = x => {
-      let sf = base + N.fbm1(x / 520 + 11.3, 4) * amp + N.fbm1(x / 110 + 3.1, 3) * 26;
+      let sf = theme.dunes
+        ? base + 60 + dune(x + N.fbm1(x / 700, 2) * 120) + N.fbm1(x / 520 + 11.3, 3) * amp * 0.55
+        : base + N.fbm1(x / 520 + 11.3, 4) * amp + N.fbm1(x / 110 + 3.1, 3) * 26;
       const ex = Math.min(x, w - x);
       if (ex < edge) sf += Math.pow(1 - ex / edge, 1.7) * (h - base + 260);   // sloping coastline
       for (const dp of dips) {
@@ -194,7 +210,7 @@ export class Terrain {
         const surf = surfCache[gx];
         // solidity saturates with depth so caves can still open up far below
         let d = Math.min((y - surf) / 90, 1.5);
-        d += N.fbm2(x / 190 + 5, y / 150 + 9, 4) * 0.95;
+        d += N.fbm2(x / 190 + 5, y / 150 + 9, 4) * (theme.dunes ? 0.45 : 0.95);
         const below = y - surf;
         if (below > 45) {
           const tun = Math.abs(N.fbm2(x / 150 + 40, y / 60 + 70, 3));      // long thin tunnels
@@ -403,6 +419,15 @@ export class Terrain {
           if (N.next() < 0.012) { // tiny flowers
             ctx.fillStyle = N.pick(['#ffe45c', '#ff8fb3', '#ffffff', '#b58cff']);
             ctx.beginPath(); ctx.arc(x, y - 6, 1.8, 0, TAU); ctx.fill();
+          }
+        } else if (theme.flake === 'sand') {
+          if (N.next() < 0.06) {                       // dry grass tuft
+            ctx.strokeStyle = N.pick(['#c9a55a', '#a88a3e', '#d8bb72']); ctx.lineWidth = 1;
+            for (let k = 0; k < 4; k++) { const lean = (N.next() - 0.5) * 7, bh = 4 + N.next() * 6;
+              ctx.beginPath(); ctx.moveTo(x, y + 1); ctx.quadraticCurveTo(x + lean * 0.3, y - bh * 0.6, x + lean, y - bh); ctx.stroke(); }
+          } else if (N.next() < 0.05) {
+            ctx.fillStyle = N.pick(['#b98a54', '#9c7445', '#d6a86a']);
+            ctx.beginPath(); ctx.ellipse(x, y, 1.6 + N.next() * 1.8, 1.1 + N.next(), 0, 0, TAU); ctx.fill();
           }
         } else if (theme.flake === 'snow') {
           if (N.next() < 0.5) {

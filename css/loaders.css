@@ -1,0 +1,215 @@
+/* Loaders ported from loading.dev (https://loading.dev) by Jakub Krehel & Paul Faivret.
+ * MIT License
+ * 
+ * Copyright (c) 2026 Jakub Krehel
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+/* orbit */
+.ld-orbit {
+  --ld-orbit-stroke: calc(var(--ld-size, 20px) * 0.0625);
+  position: relative;
+  width: var(--ld-size, 20px);
+  height: var(--ld-size, 20px);
+}
+
+.ld-orbit-track {
+  position: absolute;
+  inset: 8%;
+  border-radius: 9999px;
+  background: conic-gradient(from 180deg, transparent 0deg, currentColor 180deg, transparent 180deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--ld-orbit-stroke)), #000 0);
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--ld-orbit-stroke)), #000 0);
+}
+
+.ld-orbit-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 25%;
+  height: 25%;
+  background: currentColor;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%);
+}
+
+
+.ld-orbit-spin {
+  transform-origin: center;
+  animation: ld-orbit-rotate var(--ld-duration, 750ms) linear infinite;
+  animation-play-state: var(--ld-play-state, running);
+}
+
+.ld-orbit-spin-ease-in-out {
+  animation-timing-function: ease-in-out;
+}
+
+.ld-orbit-spin-stacked {
+  animation-name: ld-orbit-rotate, ld-orbit-rotate;
+  animation-timing-function: linear, ease-in-out;
+  animation-composition: add;
+}
+
+@keyframes ld-orbit-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-orbit-spin {
+    animation: none;
+  }
+}
+
+/* bouncing-dots */
+.ld-bouncing-dots {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--ld-size, 20px) * 0.2);
+  height: var(--ld-size, 20px);
+}
+
+.ld-bouncing-dots-dot {
+  width: calc(var(--ld-size, 20px) * 0.22);
+  height: calc(var(--ld-size, 20px) * 0.22);
+  background: currentColor;
+  border-radius: 9999px;
+  animation: ld-bouncing-dots-bounce var(--ld-duration, 500ms) ease-in-out alternate infinite;
+  animation-play-state: var(--ld-play-state, running);
+  animation-delay: calc(var(--ld-duration, 500ms) * (var(--ld-step) - 3) / 3);
+}
+
+@keyframes ld-bouncing-dots-bounce {
+  from {
+    transform: translateY(28%);
+  }
+  to {
+    transform: translateY(-72%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-bouncing-dots-dot {
+    animation: none;
+  }
+}
+
+/* wave */
+.ld-wave {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: var(--ld-size, 20px);
+  height: var(--ld-size, 20px);
+}
+
+.ld-wave-bar {
+  width: calc(var(--ld-size, 20px) * 0.12);
+  height: 100%;
+  background: currentColor;
+  border-radius: 9999px;
+  animation: ld-wave-rise var(--ld-duration, 900ms) ease-in-out infinite;
+  animation-play-state: var(--ld-play-state, running);
+  animation-delay: calc(var(--ld-duration, 900ms) * (var(--ld-step) - 5) / 5);
+}
+
+.ld-wave-bar-bottom {
+  align-self: flex-end;
+}
+
+@keyframes ld-wave-rise {
+  0%,
+  100% {
+    height: 30%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-wave-bar {
+    height: calc((0.4 + var(--ld-step) * 0.15) * 100%);
+    animation: none;
+  }
+}
+
+/* comet */
+.ld-comet {
+  --ld-comet-stroke: calc(var(--ld-size, 20px) * 0.12);
+  position: relative;
+  width: var(--ld-size, 20px);
+  height: var(--ld-size, 20px);
+}
+
+.ld-comet-spin {
+  position: absolute;
+  inset: 0;
+}
+
+.ld-comet-tail {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: conic-gradient(from 0deg, transparent, currentColor);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--ld-comet-stroke)), #000 0);
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--ld-comet-stroke)), #000 0);
+}
+
+.ld-comet-head {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--ld-comet-stroke);
+  height: var(--ld-comet-stroke);
+  background: currentColor;
+  border-radius: 9999px;
+  transform: translateX(-50%);
+}
+
+
+.ld-comet-spin {
+  transform-origin: center;
+  animation: ld-comet-rotate var(--ld-duration, 700ms) linear infinite;
+  animation-play-state: var(--ld-play-state, running);
+}
+
+.ld-comet-spin-ease-in-out {
+  animation-timing-function: ease-in-out;
+}
+
+.ld-comet-spin-stacked {
+  animation-name: ld-comet-rotate, ld-comet-rotate;
+  animation-timing-function: linear, ease-in-out;
+  animation-composition: add;
+}
+
+@keyframes ld-comet-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-comet-spin {
+    animation: none;
+  }
+}

@@ -2,6 +2,9 @@
 import { WEAPONS } from './weapons.js';
 import { images } from './assets.js';
 import { fmtTime } from './util.js';
+import { toast } from './toast.js';
+
+const badge = t => t.brain === 'jev' ? '<span class="tbBadge jev">JEV</span>' : t.cpu ? '<span class="tbBadge">CPU</span>' : '';
 
 const $ = id => document.getElementById(id);
 
@@ -32,14 +35,14 @@ export class UI {
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   }
 
+  /** Control hints ("Click to choose a target") share one toast slot so they replace each other. */
   hint(text, dur = 2.6) {
-    const el = $('hint');
-    el.textContent = text; el.classList.add('on');
-    this.hintT = dur;
+    toast(text, { id: 'hint', duration: dur * 1000 });
   }
 
   turnStart(team, worm) {
-    this.hint(`${team.brain === 'jev' ? '🧠 ' : team.cpu ? '🤖 ' : ''}${team.name} — ${worm.name}`, 2.4);
+    toast.dismiss('ai');
+    toast(team.name, { id: 'turn', description: `${worm.name}'s turn${team.brain === 'jev' ? ' · Jev' : team.cpu ? ' · CPU' : ''}`, accent: team.color, duration: 2400 });
     this.refreshTeams();
     this.refreshWeapons();
     this.closePanel();
@@ -53,7 +56,7 @@ export class UI {
       const dead = !t.worms.some(w => w.alive);
       const active = g.curTeam === t;
       return `<div class="teamBar${dead ? ' dead' : ''}${active ? ' active' : ''}" style="color:${t.color}">
-        <div class="tbTop"><span class="tbName">${t.brain === 'jev' ? '🧠 ' : t.cpu ? '🤖 ' : ''}${t.name}</span><span class="tbHp">${hp}</span></div>
+        <div class="tbTop"><span class="tbName">${badge(t)}${t.name}</span><span class="tbHp">${hp}</span></div>
         <div class="tbTrack"><div class="tbFill" style="width:${Math.min(100, hp / maxHp * 100)}%;background:${t.color}"></div></div>
         <div class="tbWorms">${t.worms.map(w => `<i class="tbWorm${w.alive ? ' alive' : ''}${w === g.cur ? ' cur' : ''}"></i>`).join('')}</div>
       </div>`;
