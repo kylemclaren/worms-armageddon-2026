@@ -145,12 +145,21 @@ export class Game {
     }
     const per = this.opts.worms;
     const spots = [];
+    const T = this.terrain;
+    // Worms start on the open surface: sky straight above them and just to either side
+    // (so not at the foot of a narrow shaft). Only if a map runs out of surface do we
+    // accept a roomy cave, and only after that anywhere at all.
+    const skyAbove = (x, y) => { for (let yy = y - 12; yy > 0; yy -= 3) if (T.solid(x, yy)) return false; return true; };
+    const onSurface = (x, y) => skyAbove(x, y) && skyAbove(x - 12, y) && skyAbove(x + 12, y);
+    const roomy = (x, y) => !T.ray(x, y - 12, 0, -1, 90) && (!T.ray(x, y - 8, -1, 0, 120) || !T.ray(x, y - 8, 1, 0, 120));
     for (let k = 0; k < per; k++) for (const t of this.teams) {
       let pos = null;
-      for (let tries = 0; tries < 600 && !pos; tries++) {
+      for (let tries = 0; tries < 800 && !pos; tries++) {
         const x = rand(90, WORLD_W - 90);
-        const y = this.terrain.standY(x, 8, rand(0, 200), this.waterY - 50);
+        // top-most standing spot in the column; a column whose top is buried in rock falls to the checks below
+        const y = T.standY(x, 8, 0, this.waterY - 50);
         if (y == null) continue;
+        if (tries < 550 ? !onSurface(x, y) : tries < 700 ? !roomy(x, y) : false) continue;
         const minGap = tries < 400 ? 70 : 30;
         if (spots.some(s => Math.hypot(s.x - x, s.y - y) < minGap)) continue;
         pos = { x, y };
