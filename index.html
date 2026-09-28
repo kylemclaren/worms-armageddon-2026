@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Worms Armageddon</title>
+<link rel="icon" href="assets/gfx/icon_grenade.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+  <div id="bgSky"><div id="bgFx"></div></div>
+  <img id="bgFar" class="bgLayer" alt="">
+  <img id="bgMid" class="bgLayer" alt="">
+  <canvas id="game"></canvas>
+  <div id="vignette"></div>
+  <div id="flashFx"></div>
+
+  <!-- ===================== HUD ===================== -->
+  <div id="hud" class="hidden">
+    <div id="teamBars"></div>
+
+    <div id="topbar">
+      <div id="windBox" title="Wind">
+        <div class="wlabel">WIND</div>
+        <div id="windMeter"><div id="windFill"></div><div id="windZero"></div></div>
+        <div id="windVal">0</div>
+      </div>
+      <div id="roundBox"><span id="roundNo">Round 1</span></div>
+      <div id="timerBox"><span id="turnTimer">45</span></div>
+    </div>
+
+    <div id="currentWeapon">
+      <img id="cwIcon" alt="">
+      <div id="cwText"><span id="cwName">Bazooka</span><span id="cwAmmo">∞</span></div>
+    </div>
+
+    <div id="powerBar"><div id="powerFill"></div></div>
+
+    <div id="fuseBox" class="hidden">FUSE <span id="fuseVal">3</span>s</div>
+
+    <div id="hint"></div>
+    <div id="bigMsg"></div>
+
+    <div id="btnRow">
+      <button id="btnWeapons" title="Weapons (Tab)">⚔</button>
+      <button id="btnSkip" title="Skip go (Backspace)">⏭</button>
+      <button id="btnSound" title="Mute (M)">🔊</button>
+      <button id="btnHelp" title="Controls (H)">?</button>
+    </div>
+  </div>
+
+  <!-- ===================== WEAPON PANEL ===================== -->
+  <div id="weaponPanel" class="hidden"></div>
+
+  <!-- ===================== MENU ===================== -->
+  <div id="menu">
+    <div class="menuInner">
+      <img id="logoImg" src="assets/gfx/logo.png" alt="Worms Armageddon" onerror="this.style.display='none';document.getElementById('logoText').style.display='block'">
+      <h1 id="logoText" style="display:none">WORMS<span>ARMAGEDDON</span></h1>
+
+      <div id="loading">
+        <div class="lbarOuter"><div class="lbar"></div></div>
+        <div class="ltext">Loading&hellip;</div>
+      </div>
+
+      <div id="menuMain" class="hidden">
+        <div class="optGrid">
+          <label>Terrain
+            <select id="optTerrain">
+              <option value="grass">Rolling Hills</option>
+              <option value="mars">Red Planet</option>
+              <option value="snow">Frozen Wastes</option>
+              <option value="random">Random</option>
+            </select>
+          </label>
+          <label>Worms per team
+            <select id="optWorms"><option>2</option><option selected>4</option><option>6</option><option>8</option></select>
+          </label>
+          <label>Teams
+            <select id="optTeams">
+              <option value="1v1cpu" selected>You vs CPU</option>
+              <option value="1v1">Hotseat: 2 players</option>
+              <option value="1v3cpu">You vs 3 CPU</option>
+              <option value="4p">Hotseat: 4 players</option>
+              <option value="1v1jev" data-jev>You vs Jev (typesafe.ai)</option>
+              <option value="1v2mix" data-jev>You vs Jev vs CPU</option>
+              <option value="jevcpu" data-jev>Watch: Jev vs CPU</option>
+              <option value="cpu2">Watch: CPU vs CPU</option>
+            </select>
+          </label>
+          <label>Turn time
+            <select id="optTime"><option>30</option><option selected>45</option><option>60</option><option value="9999">Unlimited</option></select>
+          </label>
+          <label>Health
+            <select id="optHealth"><option>75</option><option selected>100</option><option>150</option><option>200</option></select>
+          </label>
+          <label>Sudden death
+            <select id="optSD"><option value="6">Round 6</option><option value="10" selected>Round 10</option><option value="16">Round 16</option><option value="999">Never</option></select>
+          </label>
+          <label>CPU skill
+            <select id="optAI"><option value="beginner">Beginner</option><option value="pro" selected>Professional</option><option value="expert">Expert</option></select>
+          </label>
+          <label>Mines
+            <select id="optMines"><option value="0">None</option><option value="5">A few</option><option value="9" selected>Plenty</option><option value="16">Minefield</option></select>
+          </label>
+          <label>Graphics
+            <select id="optGfx"><option value="auto" selected>Auto</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+          </label>
+          <label>Crates
+            <select id="optCrates"><option value="0">Off</option><option value="0.4" selected>Normal</option><option value="0.75">Lots</option></select>
+          </label>
+        </div>
+        <button id="btnStart">LET BATTLE COMMENCE</button>
+        <div class="credits"><span id="buildTag"></span> &middot; Fan-made tribute to Team17&rsquo;s 1999 classic &middot; press <kbd>H</kbd> in game for controls</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== HELP ===================== -->
+  <div id="help" class="hidden">
+    <div class="helpInner">
+      <h2>Controls</h2>
+      <div class="helpCols">
+        <div>
+          <h3>Move</h3>
+          <p><kbd>&larr;</kbd><kbd>&rarr;</kbd> or <kbd>A</kbd><kbd>D</kbd> Walk</p>
+          <p><kbd>Enter</kbd> Jump &nbsp;&middot;&nbsp; <kbd>Enter</kbd><kbd>Enter</kbd> or <kbd>&#9003;</kbd> Backflip</p>
+          <h3>Aim &amp; fire</h3>
+          <p><kbd>&uarr;</kbd><kbd>&darr;</kbd> Aim (hold <kbd>Shift</kbd> for fine) &mdash; or point the mouse</p>
+          <p><kbd>Space</kbd> / <kbd>Left-click</kbd> Hold to charge, release to fire</p>
+          <p><kbd>1</kbd>&ndash;<kbd>5</kbd> Grenade fuse</p>
+          <p><kbd>Click</kbd> Pick target (air strike, homing, teleport, girder)</p>
+          <h3>Rope &amp; jet pack</h3>
+          <p><kbd>Space</kbd> fire/release rope &middot; <kbd>&uarr;</kbd><kbd>&darr;</kbd> climb &middot; <kbd>&larr;</kbd><kbd>&rarr;</kbd> swing</p>
+        </div>
+        <div>
+          <h3>Weapons</h3>
+          <p><kbd>Tab</kbd> / <kbd>Right-click</kbd> Weapon panel</p>
+          <p><kbd>Q</kbd><kbd>E</kbd> Previous / next weapon</p>
+          <p>Girder: <kbd>&uarr;</kbd><kbd>&darr;</kbd> or <kbd>Wheel</kbd> rotates</p>
+          <h3>Camera</h3>
+          <p><kbd>Right-drag</kbd> Pan &nbsp;&middot;&nbsp; <kbd>Wheel</kbd> Zoom &nbsp;&middot;&nbsp; <kbd>C</kbd> Centre</p>
+          <h3>Other</h3>
+          <p><kbd>P</kbd>/<kbd>Esc</kbd> Pause &nbsp;&middot;&nbsp; <kbd>M</kbd> Mute &nbsp;&middot;&nbsp; <kbd>H</kbd> Help</p>
+          <h3>Rules</h3>
+          <p>Get hurt on your own turn and it ends. Water is instant death. Sudden death drops everyone to 1&nbsp;HP and the sea starts rising.</p>
+        </div>
+      </div>
+      <button id="btnCloseHelp">CLOSE</button>
+    </div>
+  </div>
+
+  <!-- ===================== PAUSE ===================== -->
+  <div id="pause" class="hidden">
+    <div class="goInner">
+      <h2>PAUSED</h2>
+      <div class="pauseBtns"><button id="btnResume">RESUME</button><button id="btnQuit" class="ghost">QUIT TO MENU</button></div>
+    </div>
+  </div>
+
+  <!-- ===================== TOUCH PAD ===================== -->
+  <div id="touchPad" class="hidden">
+    <div class="tpL">
+      <button data-k="left">&#9664;</button><button data-k="right">&#9654;</button>
+      <button data-k="jump">&#10548;</button><button data-k="backflip">&#10226;</button>
+    </div>
+    <div class="tpR">
+      <button data-k="up">&#9650;</button><button data-k="down">&#9660;</button>
+      <button data-k="fire" class="fire">FIRE</button>
+    </div>
+  </div>
+
+  <!-- ===================== GAME OVER ===================== -->
+  <div id="gameover" class="hidden">
+    <div class="goInner">
+      <h2 id="goTitle">VICTORY</h2>
+      <div id="goSub"></div>
+      <div id="goStats"></div>
+      <button id="btnAgain">PLAY AGAIN</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# local caches and logs
+.cache/
+*.log
+node_modules/
+.env
+
+# raw generation intermediates (the game ships the processed files in assets/gfx)
+assets/img/
+assets/raw*/
+assets/unused/

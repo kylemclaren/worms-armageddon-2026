@@ -1,0 +1,9 @@
+#!/bin/zsh
+IU=(/usr/bin/python3 /home/sprite/tools/image-use/image-use)
+OUT=/home/sprite/worms/assets/raw7
+LOG=/home/sprite/worms/genimg8.log
+WORM="the classic Team17 Worms Armageddon worm, exactly like the reference character: a tall rounded sausage-shaped head that flows seamlessly into the body with no neck, two HUGE tall oval white eyes pressed together at the front top of the head with small black pupils, two small black eyebrow blobs floating just above the eyes, a wide cheerful grin, soft peach-pink skin with a lighter belly, a short plump body that curls into a J at the bottom, no arms, no hands, no clothes, no hat. Super cute, glossy, polished modern 2D game sprite art like the style reference: crisp clean dark outline, soft 3D-like shading with a warm rim light, the exact same character in every frame, all frames facing RIGHT"
+PROMPT="A game animation sprite sheet of $WORM. Three rows of five evenly spaced frames with generous empty space between frames, bottoms aligned on a common baseline per row. Row 1: idle upright breathing loop (4 frames, subtle squash and stretch) then a 5th frame blinking with eyes closed. Row 2: inchworm walk cycle, from stretched out low, to the body arching up in a hump, to a tall arch, back to stretched out. Row 3: squashed crouch ready to jump, stretched tall jumping upward, falling with a shocked open mouth, tumbling curled into a ball, dizzy with swirly eyes. Transparent background, no ground line, no shadows, no text, no labels, no grid lines."
+gen() { echo "START $1" >> $LOG; timeout 480 $IU "$PROMPT" -o "$OUT/$1.png" -i "$OUT/ref_icon.png" --style-ref "$OUT/ref_render.png" --size 1536x1024 --background transparent --format png --quiet >> $LOG 2>&1 && echo "DONE $1" >> $LOG || echo "FAIL $1" >> $LOG; }
+gen worm_sheet_c1 & gen worm_sheet_c2 & wait
+echo ALLDONE >> $LOG
