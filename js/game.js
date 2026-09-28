@@ -7,6 +7,7 @@ import { sound, VOX, voxPick } from './audio.js';
 import { images } from './assets.js';
 import { rand, randInt, pick, clamp, TAU } from './util.js';
 import { AI } from './ai.js';
+import { Marine } from './marine.js';
 
 export const WORLD_W = 2600, WORLD_H = 1250;
 
@@ -94,6 +95,7 @@ export class Game {
     this._placeWorms();
     this._placeObjects();
     this.cam.cx = WORLD_W / 2; this.cam.cy = WORLD_H * 0.45;
+    this.marine = new Marine(this, opts.testmap ? 'grass' : themeKey, WORLD_W);
     this.flakes = Array.from({ length: 90 }, () => ({ x: rand(WORLD_W + 800) - 400, y: rand(WORLD_H), s: rand(0.5, 1.2), p: rand(TAU) }));
   }
 
@@ -198,6 +200,7 @@ export class Game {
     if (o.small) this.fx.debris(x, y, 5, this.debris);
     else this.fx.explosion(x, y, R, removed > 10 ? this.debris : null);
     if (!o.small) { this.cam.shake = Math.max(this.cam.shake, R / 7); this.flash = Math.max(this.flash || 0, R / 400); }
+    this.marine?.onExplosion(x, y, R);
     const reach = R * 1.15;
     for (const w of this.worms) {
       if (!w.alive) continue;
@@ -565,6 +568,7 @@ export class Game {
     if (this.torch && this.cur) this.tickTorch(this.cur, dt);
     this.objects = this.objects.filter(o => !o.dead || o.keep);
     this.fx.update(dt, this.wind, this.waterY);
+    this.marine.update(dt);
     this.cam.update(dt);
 
     switch (this.state) {

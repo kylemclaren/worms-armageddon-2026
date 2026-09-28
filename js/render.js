@@ -79,10 +79,15 @@ export class Renderer {
     this._t('fx');
     g.fx.draw(c, 1);
     this._t('water1');
+    g.marine?.draw(c, g.pxScale || 1);             // in front of submerged rock, tinted by the front water
     if (!sk.has('water')) this._water(c, g, 1);
     this._t('flakes');
     if (!sk.has('flakes') && this.quality !== 'low') this._flakes(c, g);
     this._t('labels');
+    if (window.__dbg) for (const w of g.worms) if (!w.dead) {        // physics vs sprite debug overlay
+      c.strokeStyle = '#00e5ff'; c.lineWidth = 0.6; c.beginPath(); c.arc(w.x, w.y, w.r, 0, TAU); c.stroke();
+      c.fillStyle = '#ff2d55'; c.fillRect(w.x + (w.pivotOff || 0) * w.facing - 1, w.ry - 1, 2, 2);
+    }
     if (!sk.has('labels')) this._labels(c, g);
     this._aim(c, g, mouse);
     g.fx.draw(c, 2);
@@ -179,77 +184,57 @@ export class Renderer {
   }
 
   /**
-   * Water, in two passes around the terrain:
-   *   back  - sea band behind the islands, tinted by the sky, with reflection streaks
-   *   front - translucent layered waves over the land's feet: glossy crest line,
-   *           moving glints, faint caustics below, and foam where land meets water.
+   * Water, kept deliberately simple:
+   *   back  - the open sea behind the islands, a clean gradient with a faint sheen
+   *   front - two gentle translucent bands over the land's feet, one glossy surface
+   *           line and a few twinkles. Marine life swims between the two passes.
    */
   _water(c, g, layer) {
     const [c1, c2, c3] = g.theme.water;
     const y0 = g.waterY, t = g.time;
-    const x0 = Math.floor((g.cam.cx - g.cam.viewW / 2 - 60) / 8) * 8, x1 = g.cam.cx + g.cam.viewW / 2 + 60;
+    const x0 = Math.floor((g.cam.cx - g.cam.viewW / 2 - 60) / 10) * 10, x1 = g.cam.cx + g.cam.viewW / 2 + 60;
     const bottom = Math.max(WORLD_H + 400, g.cam.cy + g.cam.viewH);
-    const wave = (x, k, sp, a, ph = 0) => Math.sin(x * k + t * sp + ph) * a + Math.sin(x * k * 2.37 + t * sp * 1.63 + ph) * a * 0.38;
+    const wave = (x, k, sp, a) => Math.sin(x * k + t * sp) * a + Math.sin(x * k * 2.1 + t * sp * 1.4) * a * 0.3;
+    const body = (off, k, sp, amp) => {
+      c.beginPath(); c.moveTo(x0, bottom);
+      for (let x = x0; x <= x1; x += 10) c.lineTo(x, y0 + off + wave(x, k, sp, amp));
+      c.lineTo(x1, bottom); c.closePath();
+    };
 
     if (layer === 0) {
-      // distant sea: sky-coloured sheen fading into deep water
-      const gr = c.createLinearGradient(0, y0 - 40, 0, y0 + 140);
-      gr.addColorStop(0, `rgba(${g.theme.haze},0.55)`);
-      gr.addColorStop(0.25, c1); gr.addColorStop(1, c3);
-      c.fillStyle = gr;
-      c.beginPath(); c.moveTo(x0, bottom);
-      for (let x = x0; x <= x1; x += 16) c.lineTo(x, y0 - 30 + wave(x, 0.012, 0.7, 3));
-      c.lineTo(x1, bottom); c.closePath(); c.fill();
-      // shimmering reflection streaks
-      c.fillStyle = 'rgba(255,255,255,0.18)';
-      for (let i = 0; i < 26; i++) {
-        const sx = x0 + ((i * 173.3 + t * 12 * (i % 3 + 1)) % (x1 - x0));
-        const sy = y0 - 20 + (i % 5) * 6;
-        const len = 18 + (i * 37) % 40, a = 0.5 + 0.5 * Math.sin(t * 2 + i);
-        c.globalAlpha = a; c.fillRect(sx, sy, len, 1.5);
-      }
-      c.globalAlpha = 1;
+      const gr = c.createLinearGradient(0, y0 - 24, 0, y0 + 120);
+      gr.addColorStop(0, c1); gr.addColorStop(0.45, c2); gr.addColorStop(1, c3);
+      c.fillStyle = gr; body(-8, 0.011, 0.5, 2.5); c.fill();
+      c.globalAlpha = 0.35; c.strokeStyle = g.theme.foam; c.lineWidth = 1.2;
+      c.beginPath();
+      for (let x = x0; x <= x1; x += 10) { const y = y0 - 8 + wave(x, 0.011, 0.5, 2.5); x === x0 ? c.moveTo(x, y) : c.lineTo(x, y); }
+      c.stroke(); c.globalAlpha = 1;
       return;
     }
 
-    // front waves: back-to-front, each a little darker and lower
-    const bands = [
-      { off: -8, amp: 4.5, k: 0.021, sp: 1.3, top: c1, a: 0.62, crest: 0.55 },
-      { off: 4, amp: 6, k: 0.016, sp: -1.05, top: c2, a: 0.78, crest: 0.8 },
-    ];
+    // two soft translucent bands: the back one lighter, the front one deeper
+    const bands = [{ off: -5, k: 0.017, sp: 0.8, amp: 3, a: 0.4 }, { off: 3, k: 0.012, sp: -0.6, amp: 4, a: 0.64 }];
     for (const b of bands) {
-      const gr = c.createLinearGradient(0, y0 + b.off - 8, 0, y0 + b.off + 190);
-      gr.addColorStop(0, b.top); gr.addColorStop(0.35, c2); gr.addColorStop(1, c3);
-      c.globalAlpha = b.a;
-      c.fillStyle = gr;
-      c.beginPath(); c.moveTo(x0, bottom);
-      for (let x = x0; x <= x1; x += 8) c.lineTo(x, y0 + b.off + wave(x, b.k, b.sp, b.amp));
-      c.lineTo(x1, bottom); c.closePath(); c.fill();
-      // glossy crest: soft wide glow + thin bright line
-      c.globalAlpha = b.crest * 0.35; c.strokeStyle = g.theme.foam; c.lineWidth = 5;
-      c.beginPath();
-      for (let x = x0; x <= x1; x += 8) { const y = y0 + b.off + wave(x, b.k, b.sp, b.amp) + 1.5; x === x0 ? c.moveTo(x, y) : c.lineTo(x, y); }
-      c.stroke();
-      c.globalAlpha = b.crest; c.lineWidth = 1.6;
-      c.stroke();
+      const gr = c.createLinearGradient(0, y0 + b.off - 6, 0, y0 + b.off + 150);
+      gr.addColorStop(0, c1); gr.addColorStop(0.3, c2); gr.addColorStop(1, c3);
+      c.globalAlpha = b.a; c.fillStyle = gr; body(b.off, b.k, b.sp, b.amp); c.fill();
     }
-    // glints riding the crests
-    c.globalAlpha = 1; c.fillStyle = '#ffffff';
-    for (let x = x0; x <= x1; x += 22) {
-      const ph = Math.sin(x * 0.051 + t * 1.9) * Math.sin(x * 0.013 - t * 0.7);
-      if (ph < 0.72) continue;
-      const y = y0 + 4 + wave(x, 0.016, -1.05, 6) - 1;
-      c.globalAlpha = (ph - 0.72) / 0.28;
-      c.fillRect(x - 5, y, 10, 1.6); c.fillRect(x - 1, y - 2, 2, 5.5);
-    }
-    // caustics: faint light ripples under the surface
-    c.strokeStyle = '#ffffff'; c.lineWidth = 1.2;
-    for (let r = 0; r < 4; r++) {
-      const yy = y0 + 22 + r * 17;
-      c.globalAlpha = 0.07 - r * 0.012;
-      c.beginPath();
-      for (let x = x0; x <= x1; x += 12) { const y = yy + wave(x + r * 90, 0.045, 0.9 + r * 0.2, 3.5, r); x === x0 ? c.moveTo(x, y) : c.lineTo(x, y); }
-      c.stroke();
+    // one glossy surface line with a soft glow under it
+    const fb = bands[1];
+    c.strokeStyle = g.theme.foam;
+    c.beginPath();
+    for (let x = x0; x <= x1; x += 10) { const y = y0 + fb.off + wave(x, fb.k, fb.sp, fb.amp) + 1; x === x0 ? c.moveTo(x, y) : c.lineTo(x, y); }
+    c.globalAlpha = 0.16; c.lineWidth = 7; c.stroke();
+    c.globalAlpha = 0.75; c.lineWidth = 1.6; c.stroke();
+    // a few slow twinkles riding the surface
+    c.fillStyle = '#ffffff';
+    for (let x = Math.ceil(x0 / 70) * 70; x <= x1; x += 70) {
+      const tw = Math.sin(t * 1.3 + x * 0.61) * Math.sin(t * 0.7 + x * 0.23);
+      if (tw < 0.55) continue;
+      const a = (tw - 0.55) / 0.45, y = y0 + fb.off + wave(x, fb.k, fb.sp, fb.amp) + 3, r = 1 + a * 2.2;
+      c.globalAlpha = a * 0.9;
+      c.beginPath(); c.moveTo(x - r * 2.2, y); c.lineTo(x, y - r * 0.5); c.lineTo(x + r * 2.2, y); c.lineTo(x, y + r * 0.5); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(x, y - r * 1.6); c.lineTo(x + r * 0.45, y); c.lineTo(x, y + r * 1.6); c.lineTo(x - r * 0.45, y); c.closePath(); c.fill();
     }
     c.globalAlpha = 1;
     this._shoreFoam(c, g, x0, x1);
@@ -275,16 +260,16 @@ export class Renderer {
       // lapping line along the waterline
       for (let x = Math.max(a, x0); x <= Math.min(b, x1); x += 6) {
         const w = 2.2 + Math.sin(x * 0.3 + t * 3.1) * 1.2;
-        c.globalAlpha = 0.55 + 0.25 * Math.sin(x * 0.17 - t * 2.3);
+        c.globalAlpha = 0.32 + 0.18 * Math.sin(x * 0.17 - t * 2.3);
         c.beginPath(); c.ellipse(x, wy + 1 + Math.sin(x * 0.11 + t * 2) * 1.5, w * 1.8, w * 0.7, 0, 0, TAU); c.fill();
       }
       // churning foam puffs at each end of the span
       for (const ex of [a, b]) {
         if (ex < x0 - 20 || ex > x1 + 20) continue;
-        for (let i = 0; i < 5; i++) {
-          const ph = t * 2.2 + i * 1.3 + ex;
-          const r = 3 + 2.5 * (0.5 + 0.5 * Math.sin(ph));
-          c.globalAlpha = 0.45 + 0.35 * Math.sin(ph * 1.3);
+        for (let i = 0; i < 3; i++) {
+          const ph = t * 1.6 + i * 1.9 + ex;
+          const r = 2.5 + 2 * (0.5 + 0.5 * Math.sin(ph));
+          c.globalAlpha = 0.3 + 0.2 * Math.sin(ph * 1.3);
           c.beginPath(); c.arc(ex + Math.sin(ph) * 7 + (ex === a ? -3 : 3), wy - 1 + Math.cos(ph * 0.8) * 2.5, r, 0, TAU); c.fill();
         }
       }

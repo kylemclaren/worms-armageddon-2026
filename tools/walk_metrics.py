@@ -14,7 +14,7 @@ for x0, x1, name in SEGS:
     if len(rs) < 3: print(f"{name:12s}   (not reached / skipped)"); continue
     t = rs[-1]['t'] - rs[0]['t']
     speed = (rs[-1]['x'] - rs[0]['x']) / max(t, 1e-3)
-    ys = [r['ry'] for r in rs]
+    ys = [r.get('hy', r['ry']) for r in rs]
     acc = [abs(ys[i + 1] - 2 * ys[i] + ys[i - 1]) for i in range(1, len(ys) - 1)]   # render-y 2nd difference per tick
     jit = sum(acc) / len(acc) if acc else 0
     # terrain slope under the worm vs sprite tilt

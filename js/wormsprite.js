@@ -17,6 +17,14 @@ export async function loadWormAtlas(base, v = '') {
 
 export const wormAtlasReady = () => !!(atlas && meta);
 
+/** Footprint of a frame in world px for a worm drawn `worldH` tall: base length behind/ahead of the head anchor. */
+export function wormFootprint(name, worldH) {
+  const f = meta?.frames[name];
+  if (!f) return { tail: worldH * 0.55, head: worldH * 0.25 };
+  const k = worldH / meta.idleHeight;
+  return { tail: f.ax * k, head: (f.w - f.ax) * k };
+}
+
 function frameCanvas(name, deviceH, flip) {
   const f = meta.frames[name];
   const key = `${name}|${deviceH}|${flip ? 1 : 0}`;
@@ -50,7 +58,7 @@ function frameCanvas(name, deviceH, flip) {
  * Draw a worm frame so its anchor lands on (x, y) in world space.
  * pxScale = world->device scale (camera zoom x devicePixelRatio).
  */
-export function drawWormFrame(c, name, x, y, worldH, pxScale, facing, rot = 0, sx = 1) {
+export function drawWormFrame(c, name, x, y, worldH, pxScale, facing, rot = 0, sx = 1, offX = 0) {
   // bucket device sizes to 2px so small zoom changes reuse caches
   const deviceH = Math.max(8, Math.round(worldH * pxScale / 2) * 2);
   const fc = frameCanvas(name, deviceH, facing < 0);
@@ -58,6 +66,7 @@ export function drawWormFrame(c, name, x, y, worldH, pxScale, facing, rot = 0, s
   c.save();
   c.translate(x, y);
   if (rot) c.rotate(rot);
+  if (offX) c.translate(offX, 0);          // pivot at the footprint midpoint, anchor at the head
   if (sx !== 1) c.scale(sx, 1 / Math.sqrt(sx));
   c.drawImage(fc, -fc.ax * k, -fc.ay * k, fc.width * k, fc.height * k);
   c.restore();
@@ -93,8 +102,16 @@ export function wormFrame(w, g) {
   if (w.state === 'rope' || w.state === 'jet') return w.vy < 0 ? 'jump' : 'fall';
   if (w.state === 'air' || w.state === 'punch') {
     if (w.spin > 0.2 || w.flip > 0) return 'tumble';
+    // a one-frame step off a lip isn't a fall: keep the ground pose briefly
+    if ((w.airT || 0) < 0.12 && w.state === 'air' && w._groundFrame) return w._groundFrame;
     return w.vy < -40 ? 'jump' : 'fall';
   }
+  const gf = groundFrame(w, g);
+  w._groundFrame = gf;
+  return gf;
+}
+
+function groundFrame(w, g) {
   if (w.landT > 0) return 'crouch';
   if (w.walking) return `walk${Math.floor(w.walkDist / 3.2) % 5}`;
   if (w.dizzyT > 0) return 'dizzy';

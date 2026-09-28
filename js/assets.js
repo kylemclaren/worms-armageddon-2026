@@ -8,7 +8,8 @@ export const V = typeof window !== 'undefined' && window.ASSET_V ? `?v=${window.
 export const images = {};
 
 const SPRITES = ['logo', 'parachute', 'tombstone', 'oildrum', 'crate_weapon', 'crate_health', 'crate_utility',
-  'prop_tree', 'prop_rock', 'prop_crystal', 'prop_snowman'];
+  'prop_tree', 'prop_rock', 'prop_crystal', 'prop_snowman',
+  'fish_orange', 'fish_blue', 'fish_yellow', 'jellyfish', 'turtle', 'alienfish', 'whale'];
 const ICONS = ['bazooka', 'homing', 'grenade', 'cluster', 'banana', 'hhg', 'shotgun', 'minigun', 'firepunch', 'bat',
   'dynamite', 'mine', 'sheep', 'airstrike', 'armageddon', 'donkey', 'rope', 'jetpack', 'teleport', 'girder',
   'blowtorch', 'skipgo', 'surrender'];

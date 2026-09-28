@@ -4,6 +4,15 @@ A fan-made, browser-based tribute to Team17's 1999 classic: turn-based artillery
 
 No build step: plain ES modules on a Canvas 2D renderer, served by a small Node server.
 
+![Title screen](docs/screenshots/menu.jpg)
+
+| | |
+|---|---|
+| ![Rolling Hills](docs/screenshots/battle_grass.jpg) | ![Red Planet](docs/screenshots/battle_mars.jpg) |
+| ![Frozen Wastes](docs/screenshots/battle_snow.jpg) | ![Worm close-up](docs/screenshots/worm_closeup.jpg) |
+
+![Sea life](docs/screenshots/sea.jpg)
+
 ## Run it
 
 ```bash
@@ -32,7 +41,14 @@ Add `?testmap` to the URL for the deterministic movement test course, and `?perf
   - The CPU brute-forces candidate shots with the game's own physics and then plays them with skill-based aiming error.
   - Jev picks among those simulated moves, and chooses a taunt, through the TypeSafe API.
 - **Animated worms** from a 15-frame sprite atlas: idle and blink, inchworm walk, crouch, jump, fall, tumble and dizzy. The worms tilt to the slope under them, walk slower uphill, and each frame is pre-scaled to its exact device size so they stay crisp at any zoom.
+- **Natural movement**:
+  - Worms sit on the real ground under their footprint, fitted with outlier rejection.
+  - Crawl frames lie along slopes, while standing frames only lean slightly.
+  - They walk slower uphill and quicker downhill, with an inchworm speed pulse synced to the animation.
+  - `?testmap` gives a measurable test course.
+- **Sea life**: fish, turtles, jellyfish and a whale, per theme. They leap out of open water, spout, and scatter from explosions.
 - **Layered parallax backdrops** with depth-of-field, composited by the GPU, plus an adaptive graphics tier (Auto/High/Medium/Low).
+- **Title screen**: live blurred level backdrop, tilted mode and battlefield cards, elastic sliders with rolling digits, gooey segmented pickers and a click-spark start button.
 - **Audio** from ElevenLabs: 40 sound effects, three worm voice banks and an announcer.
 
 ## Layout
@@ -51,6 +67,7 @@ tools/                       asset pipeline
   verify_audio.py            speech-to-text check of every voice line
   walk_metrics.py            movement-quality metrics for the ?testmap course
   gen/                       the image-use and ElevenLabs generation scripts used
+docs/screenshots/            README images
 ```
 
 ## Credits
@@ -58,5 +75,6 @@ tools/                       asset pipeline
 - Art generated with [image-use](https://github.com/leeguooooo/image-use) and upscaled with Real-ESRGAN.
 - Voices and sound effects by [ElevenLabs](https://elevenlabs.io).
 - Opponent decisions by [TypeSafe Jev](https://typesafe.ai).
+- The title-screen widgets are vanilla re-implementations inspired by [React Bits](https://reactbits.dev) (Elastic Slider, Tilted Card, Click Spark, Aurora) and [Rare UI](https://rareui.com) (Gooey Nav, Animated Counter).
 
 Worms and Worms Armageddon are trademarks of Team17. This is a non-commercial fan project and is not affiliated with Team17.

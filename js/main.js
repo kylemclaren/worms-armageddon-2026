@@ -5,9 +5,11 @@ import { Game } from './game.js';
 import { Renderer } from './render.js';
 import { UI } from './ui.js';
 import { WEAPONS } from './weapons.js';
+import { images } from './assets.js';
+import { buildMenu } from './menu.js';
 
 const $ = id => document.getElementById(id);
-export const BUILD = '2026-09-28 perf-telemetry';
+export const BUILD = '2026-09-28 menu-v2';
 
 // ---- telemetry: real frame timings from the player's machine, sent to our own server
 function gpuName() {
@@ -39,20 +41,25 @@ let paused = false;
     sound.loadAll(p => { pa = p; upd(); txt.textContent = `Loading sounds… ${Math.round(p * 100)}%`; }),
   ]);
   // Jev options need the server-side proxy to have a TypeSafe key
-  try {
-    const st = await (await fetch('api/jev/status')).json();
-    if (!st.enabled) for (const o of document.querySelectorAll('option[data-jev]')) { o.disabled = true; o.textContent += ' — needs API key'; }
-  } catch { for (const o of document.querySelectorAll('option[data-jev]')) o.disabled = true; }
-  $('buildTag').textContent = `build ${BUILD}`;
+  let jevEnabled = false;
+  try { jevEnabled = !!(await (await fetch('api/jev/status')).json()).enabled; } catch { /* offline */ }
+  if (!jevEnabled) for (const o of document.querySelectorAll('option[data-jev]')) { o.disabled = true; o.textContent += ' (needs API key)'; }
+  const menu = buildMenu({
+    jevEnabled,
+    skyUrl: t => images[`bg_${t}_sky`]?.src,
+    iconUrl: n => images[n]?.src || '',
+  });
+  console.info(`Worms Armageddon build ${BUILD}`);
   $('loading').classList.add('hidden');
   $('menuMain').classList.remove('hidden');
   try {
     const saved = JSON.parse(localStorage.getItem('wa-opts') || '{}');
     for (const [k, v] of Object.entries(saved)) {
       const el = $(k);
-      if (el && ![...el.options].find(o => o.value === v)?.disabled) el.value = v;
+      if (el && [...el.options].some(o => o.value === String(v) && !o.disabled)) el.value = v;
     }
   } catch { /* storage unavailable */ }
+  menu.refresh();
 })();
 
 function readOpts() {
@@ -355,4 +362,6 @@ window.addEventListener('resize', () => { renderer.resize(); renderer.bgFor = nu
 
 // handy for debugging from the console
 window.__wa = () => game;
+window.__r = renderer;
+window.__setPaused = setPaused;
 window.__perf = () => ({ ...perf, el: undefined, sections: { ...(renderer.prof || {}) } });

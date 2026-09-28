@@ -2,7 +2,7 @@
 import { TAU, clamp, rand, pick } from './util.js';
 import { images } from './assets.js';
 import { sound } from './audio.js';
-import { drawWormFrame, wormFrame, wormAtlasReady, crispImage } from './wormsprite.js';
+import { drawWormFrame, wormFrame, wormAtlasReady, crispImage, wormFootprint } from './wormsprite.js';
 
 let PX = 1; // world->device scale, refreshed each frame by the renderer
 export const setPxScale = s => { PX = s; };
@@ -82,6 +82,7 @@ export { drawSprite };
 // ============================================================ WORM
 
 export class Worm {
+  static H = 42; // world px of an idle worm
   constructor(team, name, x, y, hp) {
     this.type = 'worm';
     this.team = team; this.name = name;
@@ -114,7 +115,7 @@ export class Worm {
     if (this.state === 'jet') this.team.game?.stopJet(this);
     this.state = 'air'; this.rest = false;
     this.vx = vx; this.vy = vy;
-    this.spin = 1;
+    this.spin = 1; this.airT = 1;
   }
 
   hurt(g, n, by) {
@@ -135,9 +136,9 @@ export class Worm {
     while (T.hitCircle(nx, ny, this.r) && k < 4) { ny--; k++; }   // 4px step-ups: pebbles ok, ~76deg+ walls block
     if (T.hitCircle(nx, ny, this.r)) return false;
     let d = 0;
-    while (!T.hitCircle(nx, ny + 1, this.r) && d < 5) { ny++; d++; }
+    while (!T.hitCircle(nx, ny + 1, this.r) && d < 8) { ny++; d++; }   // hug steep descents
     this.x = nx; this.y = ny;
-    if (d >= 5 && !T.hitCircle(this.x, this.y + 1, this.r)) {
+    if (d >= 8 && !T.hitCircle(this.x, this.y + 1, this.r)) {
       this.state = 'air'; this.rest = false; this.vx = dir * 30; this.vy = 0; this.spin = 0;
       this.fallFrom = this.y;
     }
@@ -162,9 +163,11 @@ export class Worm {
       if (this.stepWalk(g, dir)) this.walkDist++;
       else { blocked = true; this.walkAcc = 0; break; }
     }
-    // "walking" = trying to move and not blocked; ticks that advance <1px mid-pulse still count
+    // "walking" = trying to move and not recently blocked; ticks that advance <1px
+    // mid-pulse still count, and a wall keeps the worm idle instead of flickering
+    if (blocked) this.blockT = 0.3; else if (this.blockT > 0) this.blockT -= dt;
     const moved = !blocked;
-    this.walking = !blocked && this.state === 'idle';
+    this.walking = !(this.blockT > 0) && this.state === 'idle';
     if (moved) {
       this._stepSnd = (this._stepSnd || 0) - dt;
       if (this._stepSnd <= 0) { sound.at('walk', this.x, g.cam, { vol: 0.35, rate: rand(0.9, 1.15) }); this._stepSnd = 0.32; }
@@ -175,39 +178,83 @@ export class Worm {
     if (this.state !== 'idle') return;
     this.state = 'air'; this.rest = false;
     this.fallFrom = this.y;
+    this.airT = 1;                     // deliberate jump: show the jump pose immediately
     if (back) { this.vx = -this.facing * 55; this.vy = -390; this.flip = 1; }
     else { this.vx = this.facing * 150; this.vy = -250; }
     this.spin = 0;
     this.y -= 1;
   }
 
-  /** First solid pixel in column x at or below fromY (within `span`), or null. */
-  static groundAt(T, x, fromY, span = 26) {
+  /**
+   * Ground surface in column x near height y: scan down from y-30, skipping any rock we
+   * start inside (a tunnel ceiling), and return the first air->solid transition.
+   */
+  static groundAt(T, x, y, span = 80) {
     x = Math.round(x);
-    for (let y = Math.floor(fromY); y < fromY + span; y++) if (T.solid(x, y)) return y;
+    let yy = Math.floor(y - 30);
+    const end = yy + span;
+    while (yy < end && T.solid(x, yy)) yy++;          // started inside a ceiling: get out of it
+    for (; yy < end; yy++) if (T.solid(x, yy)) return yy;
     return null;
   }
 
-  /** Where the sprite stands and how it leans; purely visual, physics stays pixel-exact. */
+  /**
+   * Visual pose, sampled from the ground under the worm's real footprint (tail end and
+   * head end of the current frame). The base line is laid on the ground and the sprite
+   * pivots at the footprint midpoint. Physics stays pixel-exact; this only moves pixels.
+   */
   pose(g, dt) {
-    const T = g.terrain;
-    let targetY = this.y + this.r + 1, targetTilt = 0;
+    const T = g.terrain, H = Worm.H;
+    let targetY = this.y + this.r + 1, targetTilt = 0, targetMid = 0;
     if (this.state === 'idle') {
-      const gy = Worm.groundAt;
-      const c = gy(T, this.x, this.y), l = gy(T, this.x - 7, this.y - 8), r = gy(T, this.x + 7, this.y - 8);
-      if (l != null && r != null) this.slope = Math.atan2(r - l, 14);
-      else if (c != null && (l ?? r) != null) this.slope = l != null ? Math.atan2(c - l, 7) : Math.atan2(r - c, 7);
-      else this.slope = 0;
-      targetTilt = Math.max(-0.78, Math.min(0.78, this.slope * 0.8));
-      // sit the base on the ground under the footprint, averaged to ignore single-pixel grit
-      const s = [c, gy(T, this.x - 3, this.y), gy(T, this.x + 3, this.y)].filter(v => v != null);
-      if (s.length) targetY = Math.min(this.y + this.r + 9, s.reduce((a, b) => a + b, 0) / s.length + 1);
+      // one stable footprint per posture: per-frame lengths would make the pivot hop 5x a stride
+      const crawlPose = (this._frame || '').startsWith('walk');
+      const fp = wormFootprint(crawlPose ? 'walk0' : 'idle0', H);
+      const f = this.facing;
+      const xt = this.x - fp.tail * f, xh = this.x + fp.head * f, xm = (xt + xh) / 2;
+      // Sample the ground at 7 points along the footprint, drop cliff outliers (far from
+      // the median), and fit a line. Samples enter/leave the fit gradually, so there are
+      // no hard switches that make the pose flicker at slope transitions.
+      const pts = [];
+      for (let i = 0; i <= 6; i++) {
+        const sx = xt + (xh - xt) * i / 6;
+        const sy = Worm.groundAt(T, sx, this.y, 160);
+        if (sy != null) pts.push([sx, sy, i]);
+      }
+      if (pts.length >= 3) {
+        const med = pts.map(p => p[1]).sort((a, b) => a - b)[pts.length >> 1];
+        const lim = Math.abs(xh - xt) * 1.9;                 // steeper than ~62deg from the median: an edge
+        const good = pts.filter(p => Math.abs(p[1] - med) <= lim);
+        const n = good.length;
+        const mx = good.reduce((a, p) => a + p[0], 0) / n, my = good.reduce((a, p) => a + p[1], 0) / n;
+        let sxx = 0, sxy = 0;
+        for (const [px, py] of good) { sxx += (px - mx) ** 2; sxy += (px - mx) * (py - my); }
+        const k = sxx > 1 ? sxy / sxx : 0;                   // dy/dx in world space
+        this.slope = Math.atan(k);
+        const fitMid = my + k * (xm - mx);
+        const mids = good.filter(p => p[2] >= 2 && p[2] <= 4).map(p => p[1]);
+        const midMin = mids.length ? Math.min(...mids) : fitMid;
+        // rest on whichever is higher: the fitted line (valleys: the rims) or the middle ground (crests)
+        targetY = Math.min(fitMid, midMin) + 1;
+      } else {
+        const c = Worm.groundAt(T, this.x, this.y, 60);
+        this.slope *= 0.9;
+        targetY = (c ?? this.y + this.r) + 1;
+      }
+      if (!Number.isFinite(targetY)) targetY = this.y + this.r + 1;
+      targetY = Math.max(this.y - 4, Math.min(this.y + this.r + 26, targetY));
+      // crawl frames are body-horizontal: lay them along the slope. Standing frames only
+      // lean a little; rotating an upright worm to 60deg reads as it tipping over.
+      targetTilt = crawlPose ? Math.max(-1.05, Math.min(1.05, this.slope))
+                            : Math.max(-0.35, Math.min(0.35, this.slope * 0.4));
+      targetMid = (fp.head - fp.tail) / 2;          // head anchor sits this far from the pivot
     }
-    const kPos = 1 - Math.exp(-dt * (this.state === 'idle' ? 24 : 60));
-    const kTilt = 1 - Math.exp(-dt * (this.state === 'idle' ? 12 : 6));
+    const kPos = 1 - Math.exp(-dt * (this.state === 'idle' ? 22 : 60));
+    const kTilt = 1 - Math.exp(-dt * (this.state === 'idle' ? 11 : 6));
     this.ry += (targetY - this.ry) * kPos;
-    if (Math.abs(targetY - this.ry) > 30) this.ry = targetY;            // teleports, respawns
+    if (Math.abs(targetY - this.ry) > 40) this.ry = targetY;           // teleports, respawns
     this.tilt += (targetTilt - this.tilt) * kTilt;
+    this.pivotOff = (this.pivotOff ?? targetMid) + (targetMid - (this.pivotOff ?? targetMid)) * kTilt;   // ease pose switches
     if (this.turnT > 0) this.turnT -= dt;
   }
 
@@ -252,6 +299,7 @@ export class Worm {
     }
 
     if (this.state === 'air') {
+      this.airT = (this.airT || 0) + dt;
       const vyBefore = this.vy;
       this.rest = false;
       const hit = stepBody(g, this, dt);
@@ -269,7 +317,8 @@ export class Worm {
       }
       if (this.rest) {
         this.state = 'idle'; this.rest = true; this.vx = this.vy = 0; this.spin = 0; this.flip = 0;
-        this.landT = 0.14;
+        this.landT = this.airT > 0.25 ? 0.14 : 0;     // only a real landing squashes
+        this.airT = 0;
         this.noFallDmg = false;
       }
       void vyBefore;
@@ -286,12 +335,15 @@ export class Worm {
       else if (this.state === 'rope') rot = Math.atan2(this.x - g.rope.ax, g.rope.ay - this.y) * 0.6;
       else if (this.state === 'drown') rot = Math.sin(this.anim * 6) * 0.3;
       const centered = frame === 'jump' || frame === 'fall' || frame === 'tumble';
-      const H = 42; // world px of an idle worm
+      const H = Worm.H;
       const y = centered ? this.y - 6 : this.ry;
       if (!rot && !centered) rot = this.tilt;
       if (this.hurtT > 0 && ((this.hurtT * 20) | 0) % 2 === 0) c.globalAlpha = 0.55;
       const sq = this.turnT > 0 ? 0.72 + 0.28 * (1 - this.turnT / 0.14) : 1;   // quick squash on turning round
-      drawWormFrame(c, frame, this.x, y, H, g.pxScale || 1, this.facing, rot, sq);
+      // grounded: rotate about the footprint midpoint, which sits (pivotOff) behind the head
+      // pivot = footprint midpoint, which lies `off` from the head anchor (behind it)
+      const off = centered ? 0 : (this.pivotOff || 0) * this.facing;
+      drawWormFrame(c, frame, this.x + off, y, H, g.pxScale || 1, this.facing, rot, sq, -off);
       c.globalAlpha = 1;
       return;
     }

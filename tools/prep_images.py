@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = [os.path.join(ROOT, "assets/img"), os.path.join(ROOT, "assets/raw"), os.path.join(ROOT, "assets/raw2"), os.path.join(ROOT, "assets/raw6")]
+SRC = [os.path.join(ROOT, "assets/img"), os.path.join(ROOT, "assets/raw"), os.path.join(ROOT, "assets/raw2"), os.path.join(ROOT, "assets/raw6"), os.path.join(ROOT, "assets/raw8")]
 OUT = os.path.join(ROOT, "assets/gfx")
 os.makedirs(OUT, exist_ok=True)
 
@@ -73,11 +73,11 @@ def seamless(im, size):
 
 SPRITE_SIZE = {"logo": 1100, "worm_base": 320, "tombstone": 128, "oildrum": 128,
                "crate_weapon": 128, "crate_health": 128, "crate_utility": 128,
-               "prop_tree": 360, "prop_rock": 300, "prop_crystal": 300, "prop_snowman": 300}
+               "prop_tree": 360, "whale": 220, "turtle": 160, "prop_rock": 300, "prop_crystal": 300, "prop_snowman": 300}
 
 HOLES = {"prop_tree"}
 
-# newest art pass wins: raw6 > raw2 > raw > img
+# newest art pass wins: raw8 > raw6 > raw2 > raw > img
 best = {}
 for d in SRC:
     if not os.path.isdir(d): continue

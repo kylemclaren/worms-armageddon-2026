@@ -9,6 +9,11 @@
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="goo"><feGaussianBlur in="SourceGraphic" stdDeviation="5" result="b"/>
+    <feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -9" result="g"/>
+    <feComposite in="SourceGraphic" in2="g" operator="atop"/></filter>
+</svg>
 <div id="app">
   <div id="bgSky"><div id="bgFx"></div></div>
   <img id="bgFar" class="bgLayer" alt="">
@@ -56,6 +61,8 @@
 
   <!-- ===================== MENU ===================== -->
   <div id="menu">
+    <div id="menuBg"><div class="mbLayer"></div><div class="mbLayer"></div><div class="mbAurora"></div></div>
+    <canvas id="menuEmbers"></canvas>
     <div class="menuInner">
       <img id="logoImg" src="assets/gfx/logo.png" alt="Worms Armageddon" onerror="this.style.display='none';document.getElementById('logoText').style.display='block'">
       <h1 id="logoText" style="display:none">WORMS<span>ARMAGEDDON</span></h1>
@@ -66,7 +73,13 @@
       </div>
 
       <div id="menuMain" class="hidden">
-        <div class="optGrid">
+        <section class="mSection"><h3 class="mHead">Game mode</h3><div id="modeCards" class="modeCards"></div></section>
+        <section class="mSection"><h3 class="mHead">Battlefield</h3><div id="terrainCards" class="terrainCards"></div></section>
+        <section class="mSection mSplit">
+          <div><h3 class="mHead">Rules</h3><div id="sliderGrid" class="sliderGrid"></div></div>
+          <div id="segRow" class="segRow"></div>
+        </section>
+        <div class="optGrid" hidden>
           <label>Terrain
             <select id="optTerrain">
               <option value="grass">Rolling Hills</option>
@@ -112,8 +125,7 @@
             <select id="optCrates"><option value="0">Off</option><option value="0.4" selected>Normal</option><option value="0.75">Lots</option></select>
           </label>
         </div>
-        <button id="btnStart">LET BATTLE COMMENCE</button>
-        <div class="credits"><span id="buildTag"></span> &middot; Fan-made tribute to Team17&rsquo;s 1999 classic &middot; press <kbd>H</kbd> in game for controls</div>
+        <button id="btnStart"><span class="bsLabel">LET BATTLE COMMENCE</span><span class="bsShine"></span></button>
       </div>
     </div>
   </div>

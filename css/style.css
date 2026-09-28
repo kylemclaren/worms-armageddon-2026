@@ -251,3 +251,116 @@ kbd{display:inline-block;background:#2b2415;border:1px solid #6b5a33;border-bott
 @keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
 
 @media(max-height:760px){#logoImg{max-width:min(420px,70vw)}.optGrid{margin:10px auto 14px}}
+
+/* ============ MENU v2 ============ */
+#menu{background:#0b1220}
+#menuBg{position:absolute;inset:0;overflow:hidden;z-index:0}
+.mbLayer{position:absolute;inset:-4%;background:center/cover no-repeat;filter:blur(6px) saturate(1.1) brightness(.62);
+  opacity:0;transition:opacity 1s ease;transform:scale(1.06);animation:mbDrift 40s ease-in-out infinite alternate}
+.mbLayer.on{opacity:1}
+@keyframes mbDrift{to{transform:scale(1.12) translate(-1.5%,1%)}}
+.mbAurora{position:absolute;inset:-20%;opacity:.55;mix-blend-mode:screen;
+  background:radial-gradient(40% 30% at 20% 30%,rgba(120,90,255,.35),transparent 70%),
+             radial-gradient(35% 28% at 80% 25%,rgba(255,140,80,.32),transparent 70%),
+             radial-gradient(45% 35% at 50% 85%,rgba(60,200,220,.25),transparent 70%);
+  animation:aurora 18s ease-in-out infinite alternate}
+@keyframes aurora{50%{transform:translate(3%,-2%) rotate(3deg)}100%{transform:translate(-3%,2%) rotate(-2deg)}}
+#menuEmbers{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+#menu .menuInner{position:relative;z-index:2;max-width:980px}
+#logoImg{max-width:min(460px,70vw);animation:logoFloat 5s ease-in-out infinite}
+@keyframes logoFloat{50%{transform:translateY(-6px) rotate(-.6deg)}}
+
+.mSection{margin:10px auto 0;text-align:left}
+.mHead{font:900 11px/1 Nunito;letter-spacing:2.4px;text-transform:uppercase;color:#b9cde4;margin:12px 4px 8px;opacity:.85}
+.mSplit{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;align-items:start}
+
+/* tilted cards (mode + terrain) */
+.modeCards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;perspective:900px}
+.terrainCards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;perspective:900px}
+.modeCard,.terrainCard{position:relative;border:0;cursor:pointer;border-radius:14px;overflow:hidden;color:#fff;text-align:left;
+  background:linear-gradient(160deg,rgba(40,56,86,.78),rgba(18,26,44,.86));backdrop-filter:blur(6px);
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08),0 8px 22px rgba(0,0,0,.35);
+  transform:rotateX(var(--rx,0)) rotateY(var(--ry,0));transition:transform .18s ease,box-shadow .25s,filter .25s;
+  font-family:Nunito;padding:10px 12px 10px 12px;min-height:74px;display:flex;flex-direction:column;justify-content:flex-end}
+.modeCard:hover,.terrainCard:hover{box-shadow:inset 0 0 0 1.5px rgba(255,200,61,.45),0 12px 28px rgba(0,0,0,.45)}
+.modeCard.on,.terrainCard.on{box-shadow:inset 0 0 0 2px var(--gold),0 0 0 3px rgba(255,200,61,.22),0 14px 30px rgba(0,0,0,.5)}
+.modeCard.on::after,.terrainCard.on::after{content:'';position:absolute;inset:-40%;pointer-events:none;
+  background:conic-gradient(from var(--spin,0deg),transparent 0 70%,rgba(255,210,90,.55) 80%,transparent 90%);
+  animation:borderSpin 3.2s linear infinite;mask:linear-gradient(#000,#000) content-box exclude,linear-gradient(#000,#000);padding:2px;opacity:.9}
+@property --spin{syntax:'<angle>';inherits:false;initial-value:0deg}
+@keyframes borderSpin{to{--spin:360deg}}
+.modeCard[disabled]{opacity:.38;cursor:not-allowed;filter:grayscale(.7)}
+.cArt{position:absolute;inset:0;pointer-events:none}
+.modeCard .cArt img{position:absolute;right:6px;top:6px;width:44px;height:44px;object-fit:contain;
+  filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));transition:transform .25s}
+.modeCard:hover .cArt img{transform:scale(1.12) rotate(-6deg)}
+.cTitle{position:relative;font-weight:900;font-size:14px;letter-spacing:.2px;text-shadow:0 2px 4px rgba(0,0,0,.6)}
+.cSub{position:relative;font-size:11px;font-weight:700;color:#b9cde4;opacity:.9}
+.cGlare{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .2s;
+  background:radial-gradient(60% 60% at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.22),transparent 60%)}
+.modeCard:hover .cGlare,.terrainCard:hover .cGlare{opacity:1}
+.terrainCard{min-height:84px}
+.terrainCard .cArt{background-size:cover;background-position:center 30%;filter:saturate(1.15)}
+.terrainCard .cArt::after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 35%,rgba(0,0,0,.65))}
+
+/* elastic sliders + rolling numbers */
+.sliderGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;background:rgba(14,22,38,.62);border-radius:14px;
+  padding:12px 16px 14px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.07);backdrop-filter:blur(6px)}
+.eSlider{user-select:none}
+.esHead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.esLabel{font:800 12px Nunito;color:#cfe0f5}
+.esValue{font:900 14px Nunito;color:var(--gold);display:inline-flex;height:1.2em;overflow:hidden;line-height:1.2em}
+.rnSlot{display:inline-block;height:1.2em;overflow:hidden}
+.rnStrip{display:flex;flex-direction:column;transition:transform .45s cubic-bezier(.2,1.4,.3,1)}
+.rnStrip span{height:1.2em;line-height:1.2em}
+.esTrackWrap{position:relative;height:22px;cursor:pointer;touch-action:none;outline:none}
+.esTrack{position:absolute;left:0;right:0;top:8px;height:6px;border-radius:6px;background:rgba(255,255,255,.12);
+  transition:transform .5s cubic-bezier(.2,1.8,.3,1)}
+.eSlider.drag .esTrack{transition:none}
+.esFill{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:linear-gradient(90deg,#ffb238,var(--gold));
+  box-shadow:0 0 12px rgba(255,200,61,.55);transition:width .15s}
+.esTicks{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 1px;pointer-events:none}
+.esTicks i{width:2px;height:6px;background:rgba(255,255,255,.2);border-radius:1px}
+.esTicks i.on{background:rgba(60,30,0,.35)}
+.esKnob{position:absolute;top:3px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#fff;
+  box-shadow:0 2px 6px rgba(0,0,0,.45),0 0 0 3px rgba(255,200,61,.35);transition:left .15s,transform .2s}
+.eSlider.drag .esKnob{transform:scale(1.25);transition:transform .2s}
+.esTrackWrap:focus-visible .esKnob{box-shadow:0 0 0 4px rgba(255,200,61,.8)}
+
+/* gooey segmented pickers */
+.segRow{display:flex;flex-direction:column;gap:12px;padding-top:30px}
+.gsLabel{font:900 11px Nunito;letter-spacing:2.4px;text-transform:uppercase;color:#b9cde4;margin:0 4px 8px;opacity:.85}
+.gsBar{position:relative;display:flex;background:rgba(14,22,38,.7);border-radius:999px;padding:4px;
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08)}
+.gsGoo{position:absolute;inset:4px;filter:url(#goo);pointer-events:none}
+.gsBlob{position:absolute;top:0;bottom:0;border-radius:999px;background:linear-gradient(#ffd75e,var(--gold-d));
+  transition:left .45s cubic-bezier(.3,1.35,.4,1),width .45s cubic-bezier(.3,1.35,.4,1)}
+.gsBlob.trail{transition:left .7s cubic-bezier(.5,0,.2,1) .05s,width .7s cubic-bezier(.5,0,.2,1) .05s;transform:scaleY(.72)}
+.gsBar button{position:relative;flex:1;border:0;background:none;cursor:pointer;padding:9px 6px;border-radius:999px;
+  font:900 13px Nunito;color:#cfe0f5;transition:color .3s}
+.gsBar button.on{color:#3b2300}
+
+/* start button: shimmer + sparks */
+#btnStart{position:relative;overflow:hidden;margin-top:16px}
+.bsShine{position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.55) 50%,transparent 65%);
+  transform:translateX(-120%);animation:shine 3.2s ease-in-out infinite;pointer-events:none}
+@keyframes shine{60%,100%{transform:translateX(120%)}}
+.sparkCanvas{position:fixed;pointer-events:none;z-index:100}
+.uiCredit{opacity:.7;font-size:11px}
+.uiCredit a{color:#cfe0f5}
+
+@media(max-width:820px){
+  .modeCards,.terrainCards{grid-template-columns:repeat(2,1fr)}
+  .mSplit{grid-template-columns:1fr}
+  .segRow{padding-top:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .mbLayer,.mbAurora,#logoImg,.bsShine,.modeCard.on::after,.terrainCard.on::after{animation:none}
+}
+
+.optGrid[hidden]{display:none!important}
+#menu #logoImg{max-height:min(210px,24vh);width:auto;max-width:min(420px,70vw);margin-bottom:0}
+#menu .mSection{margin-top:4px}
+#menu .mHead{margin:10px 4px 7px}
+#btnStart{margin-top:14px}
+#menu .credits{margin-top:12px}
